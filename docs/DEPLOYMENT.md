@@ -81,7 +81,8 @@ No sample or demo data is shipped or loaded: the system starts empty apart from 
 2. Cycle with offerings (seats) and Round 1.
 3. Staff and faculty (invite, or **Import faculty** from Excel/CSV).
 4. Source, then import the portal export (approved by a second person).
-5. Documents and checklists, eligibility, selection (stages and criteria, call lists, panels), merit.
+5. Interviews: stages and criteria, the interview schedule (Excel template), panels and slots; then the merit formula.
+6. Optional: document types, then import applicants' files (ZIP).
 
 **Real applicant data on a test host:** personal data is covered by the DPDP Act 2023 even during testing.
 - Use HTTPS.
@@ -101,7 +102,5 @@ No sample or demo data is shipped or loaded: the system starts empty apart from 
 | --- | --- |
 | Error 500 everywhere | The PHP version is 8.3 for this subdomain; `storage/` and `bootstrap/cache/` are writable (755 or 775); `storage/logs/laravel.log` |
 | Imports stay "queued", no emails arrive | The cron job runs every minute with PHP 8.3 (System → Health: scheduler) |
-| Fee reminders are not sent | The same cron job (09:40 IST); the reminder days are set on the Admissions page |
-| Offer or waitlist reminders are not sent | The same cron job; reminders go out once a day (09:30 IST) on the reminder days set in Seats and offer settings |
 | "Page expired" or sign-in loops | The site address in `.env` (`APP_URL`) matches the address in the browser, including https |
 | `/install` opens again on a second server | Not applicable to shared hosting (one server) |

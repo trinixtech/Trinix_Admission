@@ -1,4 +1,4 @@
-// Phases 1 to 7 acceptance walk-through in a real browser.
+// Trinix Admission acceptance walk-through in a real browser.
 // Needs a running app with the demo seed, mail written to the log, and the queue running synchronously:
 //   BASE_URL=http://127.0.0.1:8000 LOG_FILE=storage/logs/laravel.log node tests/e2e/walkthrough.mjs
 // Screenshots go to SHOTS_DIR (default storage/e2e).
@@ -167,9 +167,6 @@ try {
     await dialog.getByLabel('Reason').fill('Correction to dates');
     await dialog.getByRole('button', { name: 'Reopen' }).click();
     await expectText(page, 'Round reopened.');
-    // D28: imported candidates count as called by default; this walk-through also exercises the call list, so it turns that off.
-    await page.getByLabel('Candidates imported for this round are called (IIFT shortlists before importing)').uncheck();
-    await expectText(page, 'Only the published call list now decides who is called.');
 
     step('Invites an admission officer scoped to Branch One');
     await page.goto(`${BASE}/people/users`);
@@ -295,24 +292,10 @@ try {
     await shot(page, '14-application-mobile');
 
     // ---------------- Phase 3: documents, scrutiny and eligibility ----------------
-    step('Phase 3: Super Admin sets up required documents, the checklist and eligibility rules from the suggestions');
-    await page.goto(`${BASE}/scrutiny/setup`);
-    await page.getByLabel(label('Course')).selectOption({ label: 'MBA (International Business) (MBA-IB)' });
-    await page.getByRole('button', { name: 'Add suggested' }).click();
-    await expectText(page, 'suggested requirements added');
-    await page.getByRole('button', { name: 'New from suggestions' }).click();
-    await expectText(page, 'Suggested checklist created');
-    await page.getByRole('button', { name: 'Activate' }).click();
-    await expectText(page, 'Checklist activated.');
-    await shot(page, '15-setup-mobile');
-    await page.goto(`${BASE}/scrutiny/eligibility`);
-    await page.getByLabel(label('Course')).selectOption({ label: 'MBA (International Business) (MBA-IB)' });
-    await page.getByRole('button', { name: 'Start from suggested rules' }).click();
-    await expectText(page, 'Check every value against the official policy');
-    await page.getByLabel(label("Source in IIFT's policy")).fill('Admission Prospectus (walk-through sample), section 4');
-    await page.getByRole('button', { name: 'Approve' }).click();
-    await expectText(page, 'Approved. Decisions now use this version.');
-    await shot(page, '16-eligibility-rules-mobile');
+    step('Files (optional): Super Admin loads the suggested document types');
+    await page.goto(`${BASE}/documents/types`);
+    await page.getByRole('button', { name: 'Load the suggested types' }).click();
+    await expectText(page, 'suggested document types added');
 
     step('The officer imports a ZIP of documents; the EICAR test file is caught');
     const docsZip = `${SHOTS}/documents.zip`;
@@ -333,75 +316,13 @@ try {
     await page.getByRole('dialog').getByRole('button', { name: 'Approve and write' }).click();
     await expectText(page, 'Every row is accounted for.');
 
-    step('The officer verifies the documents and completes scrutiny on a phone');
-    const openApp = async (p, number) => {
-        await p.goto(`${BASE}/applications`);
-        await p.getByLabel('Search').fill(number);
-        await p.getByRole('link', { name: /Sharma/ }).first().click();
-        await expectText(p, number);
-    };
-    await openApp(page2, 'PRTM0000007');
-    await page2.getByRole('tab', { name: 'Scrutiny' }).click();
-    await page2.getByRole('button', { name: 'Start scrutiny' }).click();
-    await page2.getByRole('tab', { name: 'Documents' }).click();
-    await expectText(page2, 'Graduation marksheets');
-    for (let i = 0; i < 6; i++) {
-        await page2.getByRole('button', { name: 'Verify', exact: true }).and(page2.locator(':not([disabled])')).first().click();
-        await page2.waitForTimeout(300);
-    }
-    await shot(page2, '18-documents-mobile');
-    await page2.getByRole('tab', { name: 'Scrutiny' }).click();
-    await expectText(page2, 'Date of birth matches the Class 10 marksheet');
-    // Tick every check that is still open (field checks lock the field).
-    const open = () => page2.locator('li', { has: page2.getByText('Pending', { exact: true }) }).getByRole('button', { name: /^Met( \(lock\))?$/ });
-    for (let guard = 0; (await open().count()) && guard < 20; guard++) {
-        const before = await open().count();
-        await open().first().click();
-        for (let t = 0; t < 20 && (await open().count()) === before; t++) await page2.waitForTimeout(150);
-    }
-    await page2.getByRole('button', { name: 'Mark complete' }).click();
-    await expectText(page2, 'Scrutiny complete.');
-    await shot(page2, '19-scrutiny-mobile');
-
-    step('Records eligibility for that applicant');
-    await page2.getByRole('tab', { name: 'Eligibility' }).click();
-    await expectText(page2, 'Evaluation:');
-    await page2.getByRole('button', { name: 'Record decision' }).click();
-    await expectText(page2, 'Decision recorded.');
-
-    step('Marks another applicant deficient and sends the notice by email');
-    await openApp(page2, 'PRTM0000009');
-    await page2.getByRole('tab', { name: 'Scrutiny' }).click();
-    await page2.getByRole('button', { name: 'Start scrutiny' }).click();
-    await page2.getByRole('button', { name: 'Mark deficient' }).click();
-    await expectText(page2, 'Class 12 marksheet: not received');
-    await page2.getByRole('button', { name: 'Review and send' }).click();
-    await expectText(page2, 'Documents needed for your');
-    await shot(page2, '20-notice-mobile');
-    await page2.getByRole('dialog').getByRole('button', { name: 'Send email' }).click();
-    await expectText(page2, 'Notice sent by email.');
-    if (!/Documents needed for your MBA \(International Business\) application[\s\S]{0,20}\(PRTM0000009\)/.test(readFileSync(LOG, 'utf8'))) throw new Error('Deficiency email not found in the mail log');
-
-    step('Records "not eligible"; the Super Admin confirms it as the second person');
-    await page2.getByRole('tab', { name: 'Eligibility' }).click();
-    await page2.getByLabel(label('Decision')).selectOption('not_eligible');
-    await page2.getByLabel(label('Reason')).fill('Walk-through: degree not recognised');
-    await page2.getByRole('button', { name: 'Record decision' }).click();
-    await expectText(page2, 'A second person must confirm');
-    await page.goto(`${BASE}/scrutiny/confirmations`);
-    await page.getByRole('link', { name: /PRTM0000009/ }).click();
-    await page.getByRole('tab', { name: 'Eligibility' }).click();
-    await page.getByRole('button', { name: 'Confirm not eligible' }).click();
-    await expectText(page, 'Confirmed: not eligible.');
-    await shot(page, '21-eligibility-mobile');
-
-    // ---------------- Phase 4: call lists, GD/PI panels, live marking, contact ----------------
+    // ---------------- Interviews: faculty, panels, schedule, live marking ----------------
     const istDate = (days) => new Date(Date.now() + 5.5 * 3600e3 + days * 86400e3).toISOString().slice(0, 10);
     const panelDate = istDate(2);
     const mbaIb = 'MBA (International Business) (MBA-IB)';
     const pickCourse = (p) => p.getByLabel(label('Course')).first().selectOption({ label: mbaIb });
 
-    step('Phase 4: Super Admin invites two faculty panel members; they set passwords');
+    step('Super Admin invites two faculty panel members; they set passwords');
     const faculty = {};
     for (const [name, email] of [['Ravi Faculty', 'ravi.faculty@example.test'], ['Meera Faculty', 'meera.faculty@example.test']]) {
         await page.goto(`${BASE}/people/users`);
@@ -466,27 +387,6 @@ try {
     }
     await shot(page, '22-stage-settings-mobile');
 
-    step('Enters the call cut-offs per category and approves them; the officer runs them; the Super Admin publishes');
-    await page.goto(`${BASE}/selection/call-lists`);
-    await pickCourse(page);
-    await page.getByRole('button', { name: 'Enter cut-offs' }).click();
-    await expectText(page, 'New draft version created.');
-    await page.getByRole('button', { name: '+ Add cut-off' }).click();
-    await page.getByLabel(label('Cut-off')).fill('CAT percentile');
-    for (const c of ['GEN', 'EWS', 'OBC-NCL', 'SC', 'ST', 'PwBD']) await page.getByLabel(label(c)).fill('50');
-    await page.getByLabel(label('Source (IIFT policy or committee decision)')).fill('Walk-through: committee minutes');
-    await page.getByRole('button', { name: 'Approve' }).click();
-    await expectText(page, 'Approved. Run it to see who is called.');
-    await page2.goto(`${BASE}/selection/call-lists`);
-    await pickCourse(page2);
-    await page2.getByRole('button', { name: 'Run the cut-offs' }).click();
-    await expectText(page2, 'List made.');
-    await shot(page2, '23-call-list-mobile');
-    await page.reload();
-    await pickCourse(page);
-    await page.getByRole('button', { name: 'Publish and email the called' }).click();
-    await expectText(page, 'Published. 1 applicants were emailed');
-
     step('Creates a GD panel in Delhi and a PI panel, adds members and slots, fills the GD slot');
     const makePanel = async (stage, name, member, start, end, capacity) => {
         await page.goto(`${BASE}/panels`);
@@ -513,25 +413,28 @@ try {
         return page.url();
     };
     const piUrl = await makePanel('PI · Personal Interview', 'PI Panel 1', 'Meera Faculty', '11:00', '11:20', 1);
-    const gdUrl = await makePanel('GD · Group Discussion', 'GD Panel 1 · Delhi', 'Ravi Faculty', '10:00', '10:45', 8);
-    step('Stage A: allocates the called candidates to GD panels automatically (preview, then confirm)');
+    const gdUrl = await makePanel('GD · Group Discussion', 'GD Panel 1 · Delhi', 'Ravi Faculty', '10:00', '10:45', 1);
+    step('Allocates candidates to GD panels automatically (preview, then confirm); the schedule is fixed, then emailed');
     await page.goto(`${BASE}/panels`);
     await pickCourse(page);
     await page.getByRole('button', { name: 'Allocate candidates automatically' }).click();
     dialog = page.getByRole('dialog');
     await dialog.getByLabel(label('Stage')).selectOption({ label: 'GD · Group Discussion' });
     await dialog.getByRole('button', { name: 'Preview' }).click();
-    await expectText(page, 'Nothing is saved or emailed until you confirm.');
+    await expectText(page, 'Nothing is saved until you confirm');
     await expectText(page, 'GD Panel 1 · Delhi');
     await shot(page, '24a-auto-allocate-mobile');
-    await dialog.getByRole('button', { name: 'Confirm and email' }).click();
-    await expectText(page, '1 candidates scheduled and emailed.');
+    await dialog.getByRole('button', { name: 'Confirm' }).click();
+    await expectText(page, '1 candidates scheduled');
     await dialog.getByRole('button', { name: 'Close' }).click();
+    await page.getByLabel(label('Stage')).first().selectOption({ label: 'GD · Group Discussion' });
+    await page.getByRole('button', { name: 'Send schedule emails' }).click();
+    await expectText(page, '1 candidates were emailed their schedule.');
     await page.goto(gdUrl);
     await shot(page, '24-panel-mobile');
     if (!/Your Group Discussion schedule/.test(readFileSync(LOG, 'utf8'))) throw new Error('Schedule email not found in the mail log');
 
-    step('The GD chair marks the candidate present, enters marks (autosaved), submits and locks');
+    step('The GD panel member marks the candidate present, enters marks (autosaved) and submits; the admin locks all complete GD results');
     const ravi = faculty['Ravi Faculty'];
     await ravi.goto(`${BASE}/my-interviews`);
     await ravi.getByLabel('Interview date').selectOption(panelDate);
@@ -547,8 +450,11 @@ try {
     await shot(ravi, '25-gd-marking-phone');
     await ravi.getByRole('button', { name: 'Submit marks for this group' }).click();
     await expectText(ravi, 'Marks submitted.');
-    await ravi.getByRole('button', { name: 'Lock result' }).click();
-    await expectText(ravi, 'Result locked');
+    await page.goto(`${BASE}/panels`);
+    await pickCourse(page);
+    await page.getByLabel(label('Stage')).first().selectOption({ label: 'GD · Group Discussion' });
+    await page.getByRole('button', { name: 'Lock all complete results' }).click();
+    await expectText(page, '1 results locked');
 
     step('The admission office sends the candidate on to the PI panel');
     await page.goto(gdUrl);
@@ -560,7 +466,7 @@ try {
     await expectText(page, 'sent, 11:00 AM');
     await shot(page, '26-send-to-pi-mobile');
 
-    step('The PI chair sees the GD average and marks with the steppers on a phone');
+    step('The PI panel member sees the GD average and marks with the steppers on a phone');
     const meera = faculty['Meera Faculty'];
     await meera.goto(`${BASE}/my-interviews`);
     await meera.getByLabel('Interview date').selectOption(panelDate);
@@ -577,20 +483,6 @@ try {
     await expectText(meera, 'Marks submitted.');
     await expectText(meera, '24.5');
     if (!piUrl) throw new Error('PI panel not created');
-
-    step('The officer records a call with a follow-up, then clears it from the follow-ups list');
-    await openApp(page2, 'PRTM0000007');
-    await page2.getByRole('tab', { name: 'Contact' }).click();
-    await page2.getByLabel(label('Outcome')).selectOption('confirmed_attendance');
-    await page2.getByLabel(label('What the applicant said')).fill('Will attend the PI.');
-    await page2.getByLabel(label('Follow up on')).fill(istDate(0));
-    await page2.getByRole('button', { name: 'Save', exact: true }).click();
-    await expectText(page2, 'Recorded.');
-    await shot(page2, '28-contact-mobile');
-    await page2.goto(`${BASE}/follow-ups`);
-    await expectText(page2, 'PRTM0000007');
-    await page2.getByRole('button', { name: 'Mark done' }).click();
-    await expectText(page2, 'Nothing due.');
 
     // ---------------- Phase 5: merit ----------------
     step('Phase 5: Super Admin enters a merit formula (test values) and approves it');
@@ -612,7 +504,7 @@ try {
     await page.getByLabel(label('Source (IIFT policy or committee decision)')).fill('Walk-through: test values, not IIFT policy');
     await page.getByRole('button', { name: 'Save draft' }).click();
     await expectText(page, 'Draft saved.');
-    await page.getByLabel(label('Application number')).fill('PRTM0000007');
+    await page.getByLabel(label('Application number')).fill('PRTM0000001');
     await page.getByRole('button', { name: 'Calculate' }).click();
     await expectText(page, 'Total ');
     await shot(page, '29-merit-formula-mobile');
@@ -624,7 +516,7 @@ try {
     await pickCourse(page2);
     await page2.getByRole('button', { name: 'Run the formula' }).click();
     await expectText(page2, 'List made.');
-    await page2.getByRole('button', { name: /Sharma/ }).first().click();
+    await page2.locator('table button.btn-link').first().click();
     await expectText(page2, 'Formula version 1');
     await shot(page2, '30-merit-breakdown-mobile');
     await page2.getByRole('dialog').getByRole('button', { name: /Close/ }).click().catch(() => page2.keyboard.press('Escape'));
@@ -642,120 +534,6 @@ try {
     await expectText(page, 'Published.');
     await shot(page, '31-merit-list-mobile');
 
-    // ---------------- Phase 6: reservation, seats, offers and payments ----------------
-    step('Phase 6: Super Admin loads the suggested categories (names only)');
-    await page.goto(`${BASE}/seats/categories`);
-    await page.getByRole('button', { name: 'Load the suggested list' }).click();
-    await expectText(page, 'categories added');
-
-    step('The officer drafts the reservation rules (test values); the Super Admin approves them');
-    await page2.goto(`${BASE}/seats/rules`);
-    await page2.getByRole('button', { name: 'Start the rule set' }).click();
-    await expectText(page2, 'Draft started.');
-    for (const [code, pct] of [['SC', '15'], ['ST', '7.5'], ['OBC-NCL', '27'], ['EWS', '10']]) await page2.getByLabel(`${code} (vertical) %`).fill(pct);
-    await page2.getByLabel(label('Source (order, notification or committee decision)')).fill('Walk-through: test values, not IIFT policy');
-    await page2.getByRole('button', { name: 'Add a conversion' }).click();
-    await page2.getByRole('button', { name: 'Save draft' }).click();
-    await expectText(page2, 'Saved.');
-    await shot(page2, '32-reservation-rules-mobile');
-    await page.goto(`${BASE}/seats/rules`);
-    await page.getByRole('button', { name: 'Approve' }).click();
-    await expectText(page, 'Approved.');
-
-    step('The officer calculates the seats and sets the offer terms; the Super Admin approves the seats');
-    await page2.goto(`${BASE}/seats/matrix`);
-    await pickCourse(page2);
-    await page2.getByRole('button', { name: 'Calculate seats' }).click();
-    await expectText(page2, 'Seat matrix calculated.');
-    await page2.getByLabel(label('Amount to accept an offer (Rs)')).fill('25000');
-    await page2.getByLabel(label('Waitlist hold amount (Rs)')).fill('10000');
-    await page2.getByRole('button', { name: 'Save settings' }).click();
-    await expectText(page2, 'Offer settings saved.');
-    await shot(page2, '33-seat-matrix-mobile');
-    await page.goto(`${BASE}/seats/matrix`);
-    await pickCourse(page);
-    await page.getByRole('button', { name: 'Approve' }).click();
-    await expectText(page, 'Approved.');
-
-    step('The officer runs the allocation; the Super Admin approves and publishes it (offers emailed)');
-    await page2.goto(`${BASE}/seats/allocation`);
-    await pickCourse(page2);
-    await page2.getByRole('button', { name: 'Run the allocation' }).click();
-    await expectText(page2, 'Allocation run made.');
-    await expectText(page2, 'Seat offered');
-    await shot(page2, '34-allocation-mobile');
-    await page.goto(`${BASE}/seats/allocation`);
-    await pickCourse(page);
-    await page.getByRole('button', { name: 'Approve and publish' }).click();
-    await expectText(page, 'Approved and published.');
-
-    step('The officer records an acceptance taken by phone, with the payment; the Super Admin verifies the payment');
-    await page2.goto(`${BASE}/seats/offers`);
-    await pickCourse(page2);
-    await page2.getByRole('button', { name: 'Record answer' }).first().click();
-    const answer = page2.getByRole('dialog');
-    await answer.getByLabel(label('Amount (Rs)')).fill('25000');
-    await answer.getByLabel(label('Reference (UTR, DD number)')).fill('UTR123456789');
-    await answer.getByRole('button', { name: 'Save', exact: true }).click();
-    await answer.waitFor({ state: 'hidden' });
-    await expectText(page2, 'Accepted');
-    await shot(page2, '35-offers-mobile');
-    await page.goto(`${BASE}/accounts/payments`);
-    await page.getByRole('button', { name: 'Verify' }).first().click();
-    await expectText(page, 'Verified; the receipt was emailed.');
-
-    // ---------------- Phase 7: admission, fees, payments ----------------
-    step('Phase 7: the officer drafts the fee structure (test values); the Super Admin approves it');
-    await page2.goto(`${BASE}/accounts/fees`);
-    await page2.getByRole('button', { name: 'Start the fee structure' }).click();
-    await expectText(page2, 'Draft started.');
-    await page2.getByLabel(label('Source (fee notification or committee decision)')).fill('Walk-through: test values, not IIFT fees');
-    await page2.getByRole('button', { name: 'Add a fee head' }).click();
-    await page2.getByLabel(label('Code 1')).fill('TUITION');
-    await page2.getByLabel(label('Name')).nth(1).fill('Tuition');
-    await page2.getByRole('button', { name: 'Add an instalment' }).click();
-    await page2.getByLabel(label('Due date')).fill(`${year}-07-01`);
-    for (const input of await page2.getByLabel(/^Tuition Instalment 1 /).all()) await input.fill('500000');
-    await page2.getByRole('button', { name: 'Save draft' }).click();
-    await expectText(page2, 'Saved.');
-    await shot(page2, '36-fee-structure-mobile');
-    await page.goto(`${BASE}/accounts/fees`);
-    await page.getByRole('button', { name: 'Approve' }).click();
-    await expectText(page, 'Approved. New admissions use this version.');
-
-    step('The officer sets the admission number pattern and confirms the admission');
-    await page2.goto(`${BASE}/accounts/admissions`);
-    await pickCourse(page2);
-    await page2.getByLabel(label('Admission number pattern')).fill('{COURSE}/{YEAR}/{CAMPUS}/{SEQ:4}');
-    await page2.getByRole('button', { name: 'Save', exact: true }).click();
-    await expectText(page2, 'Settings saved.');
-    await page2.getByRole('button', { name: 'Confirm admission' }).first().click();
-    await page2.getByRole('dialog').getByRole('button', { name: 'Confirm admission' }).click();
-    await expectText(page2, 'Admission confirmed:');
-    await shot(page2, '37-admissions-mobile');
-
-    step('The officer records a fee payment on the Fees tab; the Super Admin verifies it (receipt emailed)');
-    await page2.getByRole('tab', { name: /^Admitted/ }).click();
-    await page2.locator('table a').filter({ visible: true }).first().click();
-    await page2.getByRole('tab', { name: 'Fees' }).click();
-    await page2.getByRole('button', { name: 'Record a payment' }).click();
-    const pay = page2.getByRole('dialog');
-    await pay.getByLabel(label('Amount (Rs)')).fill('100000');
-    await pay.getByLabel(label('Reference (UTR, DD or challan number)')).fill('UTR987654321');
-    await pay.getByRole('button', { name: 'Save', exact: true }).click();
-    await expectText(page2, 'Payment recorded; Accounts verifies it.');
-    await shot(page2, '38-fees-tab-mobile');
-    await page.goto(`${BASE}/accounts/payments`);
-    await page.getByRole('button', { name: 'Verify' }).first().click();
-    await expectText(page, 'Verified; the receipt was emailed.');
-
-    step('The Super Admin looks at the dashboard and reports');
-    await page.goto(`${BASE}/accounts/reports`);
-    await pickCourse(page);
-    await expectText(page, 'Admission funnel');
-    await expectText(page, 'Outstanding fees');
-    await shot(page, '39-reports-mobile');
-
     step('Desktop layout');
     const desk = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, storageState: await ctx.storageState() });
     const dp = await desk.newPage();
@@ -763,7 +541,7 @@ try {
     await expectText(dp, `Admissions ${year}`);
     await shot(dp, '10-cycles-desktop');
 
-    console.log('\nPhases 1 to 7 walk-through passed.');
+    console.log('\nTrinix Admission walk-through passed.');
 } catch (e) {
     console.error('\nFAILED:', e.message);
     for (const c of browser.contexts()) for (const [i, p] of c.pages().entries()) await p.screenshot({ path: `${SHOTS}/failure-${browser.contexts().indexOf(c)}-${i}.png`, fullPage: true }).catch(() => {});

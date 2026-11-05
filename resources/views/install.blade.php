@@ -174,8 +174,8 @@
                     <li>Cycles: academic year, admission cycle, offerings with intake, Round 1.</li>
                     <li>People: invite staff, and <b>Import faculty</b> from Excel/CSV.</li>
                     <li>Sources: the admission portal, then import applicants (Imports).</li>
-                    <li>Documents and checklists, eligibility rules.</li>
-                    <li>Selection: stages and criteria (GD/PI marks), call lists, panels.</li>
+                    <li>Interviews: stages and criteria (GD/PI marks), the interview schedule (Excel template: dates, panels, venues, slots, members).</li>
+                    <li>Optional: document types, then import applicants' files (ZIP).</li>
                 </ol>
                 <h3>Scheduled tasks (required)</h3>
                 <p>Add this cron job in the hosting control panel, to run <b>every minute</b>. It sends reminders, retries scans and, without Redis, also processes imports and emails:</p>
