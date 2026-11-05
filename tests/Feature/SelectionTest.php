@@ -124,7 +124,7 @@ it('sets up stages from the suggested set and keeps criteria fixed once marks ex
     $this->actingAs($this->staff)->patchJson("/api/v1/selection-stages/{$c->stage->uid}", ['show_previous_marks' => true])->assertForbidden();
 });
 
-it('schedules only called applicants, refuses clashes, and emails schedule and changes', function () {
+it('schedules only applicants imported for the round, refuses clashes, emails the fixed schedule on request, then emails changes', function () {
     publishedCallList($this);
     [$gd] = stages($this);
     $p = panel($this, $gd, [$this->f1, $this->f2], capacity: 2);
@@ -134,7 +134,10 @@ it('schedules only called applicants, refuses clashes, and emails schedule and c
         ->assertStatus(422)->assertJsonValidationErrors('application');
     $this->postJson("/api/v1/interview-slots/{$p['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])->assertCreated();
     $this->postJson("/api/v1/interview-slots/{$p['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])->assertStatus(422);
+    Mail::assertNothingQueued(); // fix the schedule first, send later
+    $this->postJson('/api/v1/panels/notify', ['stage_uid' => $gd, 'round_uid' => $this->round1->uid])->assertOk()->assertJsonPath('emailed', 1);
     Mail::assertQueued(PlainMail::class, fn ($m) => str_contains($m->subjectLine ?? $m->subject, 'Group Discussion schedule'));
+    $this->postJson('/api/v1/panels/notify', ['stage_uid' => $gd, 'round_uid' => $this->round1->uid])->assertOk()->assertJsonPath('emailed', 0); // once only
 
     // A member cannot sit on two panels at the same time.
     $date = now('Asia/Kolkata')->addDays(2)->toDateString();
@@ -143,7 +146,7 @@ it('schedules only called applicants, refuses clashes, and emails schedule and c
     $this->postJson("/api/v1/panels/{$other['uid']}/members", ['user_uid' => $this->f1->uid, 'role' => 'chair'])->assertStatus(422)->assertJsonValidationErrors('user_uid');
     $this->postJson("/api/v1/panels/{$other['uid']}/members", ['user_uid' => $this->staff->uid, 'role' => 'member'])->assertStatus(422);
 
-    // Reschedule needs a reason and emails the new time.
+    // Reschedule needs a reason and, once the candidate was told, emails the new time.
     $c = InterviewCandidate::where('application_id', app_no(1)->id)->first();
     $slot2 = $this->getJson("/api/v1/panels/{$other['uid']}")->json('data.slots.1.uid');
     $this->postJson("/api/v1/interview-candidates/{$c->uid}/reschedule", ['slot_uid' => $slot2])->assertStatus(422);
@@ -151,7 +154,7 @@ it('schedules only called applicants, refuses clashes, and emails schedule and c
     expect(NotificationLog::where('template_key', 'interview_rescheduled')->count())->toBe(1);
 
     // Bulk scheduling fills free places with called applicants not yet booked.
-    $this->postJson("/api/v1/panels/{$p['uid']}/bulk-schedule")->assertOk()->assertJsonPath('message', '2 candidates scheduled and emailed.');
+    $this->postJson("/api/v1/panels/{$p['uid']}/bulk-schedule")->assertOk()->assertJsonPath('message', '2 candidates scheduled. Send the schedule emails when the schedule is final.');
 });
 
 it('emails a reminder the day before, once', function () {
@@ -171,7 +174,7 @@ it('keeps a member with a declared conflict from marking, and refuses booking on
     $this->actingAs($this->f2)->postJson("/api/v1/interview-candidates/{$c->uid}/conflict", ['reason' => 'Relative'])->assertOk();
     mark($this, $this->f2, $c, [5, 5])->assertNotFound();
     mark($this, $this->f1, $c, [6, 6])->assertOk();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk(); // only f1 expected
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk(); // the admin locks
 });
 
 // ----- Marking -------------------------------------------------------------------------------
@@ -219,13 +222,13 @@ it('hides other members\' marks until own submit, averages, flags outliers and l
     mark($this, $this->f1, $c, [8, 8])->assertOk();        // 16
     mark($this, $this->f2, $c, [7.5, 7.5])->assertOk();    // 15
     $this->actingAs($this->f3)->getJson($slotUrl)->assertOk()->assertJsonPath('data.candidates.0.result', null);
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertStatus(422);
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertStatus(422);
     mark($this, $this->f3, $c, [5, 4.5])->assertOk();      // 9.5
     $r = $this->actingAs($this->f3)->getJson($slotUrl)->assertOk()->json('data.candidates.0.result');
     expect($r['average'])->toBe('13.50')->and(collect($r['evaluators'])->firstWhere('total', '9.50')['outlier'])->toBeTrue();
 
     $this->actingAs($this->f2)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertForbidden();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk()->assertJsonPath('data.status', 'completed');
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk()->assertJsonPath('data.status', 'completed');
     $this->actingAs($this->chairRole)->getJson("/api/v1/panels/{$p['uid']}/summary")->assertOk()->assertJsonPath('data.candidates.0.result.locked', true);
 });
 
@@ -236,7 +239,7 @@ it('reopens submitted marks only by the chair or with permission, with a reason,
     $c = presentCandidate($this, $p, app_no(1));
     mark($this, $this->f1, $c, [8, 8])->assertOk();
     mark($this, $this->f2, $c, [7, 7])->assertOk();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk();
     $ev = $c->evaluations()->where('evaluator_id', $this->f2->id)->first();
 
     $this->actingAs($this->f3)->postJson("/api/v1/evaluations/{$ev->uid}/reopen", ['reason' => 'x'])->assertNotFound();
@@ -275,7 +278,7 @@ it('sends locked GD candidates on to a PI panel, with the minimum average and pr
     mark($this, $this->f1, $c1, [8, 7])->assertOk();   // 15
     mark($this, $this->f1, $c3, [5, 5])->assertOk();   // 10, below 12
     mark($this, $this->f1, $c4, [7, 6])->assertOk();   // 13, not locked
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
     $this->postJson("/api/v1/interview-candidates/{$c3->uid}/lock")->assertOk();
 
     $res = $this->postJson('/api/v1/interview-candidates/send-on', ['candidate_uids' => [$c1->uid, $c3->uid, $c4->uid], 'panel_uid' => $piPanel['uid']])->assertOk()->json('data');
@@ -301,7 +304,7 @@ it('hides previous-stage marks when the stage setting is off', function () {
     $piPanel = panel($this, $pi, [$this->f2], '11:00', '11:20', 1, name: 'PI 1');
     $c1 = presentCandidate($this, $gdPanel, app_no(1));
     mark($this, $this->f1, $c1, [8, 7])->assertOk();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
     $this->actingAs($this->staff)->postJson('/api/v1/interview-candidates/send-on', ['candidate_uids' => [$c1->uid], 'panel_uid' => $piPanel['uid']])->assertOk()->assertJsonPath('data.0.sent', true);
     $this->actingAs($this->f2)->getJson("/api/v1/my-interviews/slots/{$piPanel['slots'][0]['uid']}")->assertOk()->assertJsonPath('data.candidates.0.previous', []);
 });
@@ -347,6 +350,8 @@ it('allocates called candidates to panels by GD/PI centre preference, then elsew
 
     $this->postJson("/api/v1/panels/auto-allocate/{$p['token']}/confirm")->assertOk()->assertJsonPath('data.scheduled', 4);
     expect(InterviewCandidate::where('active', true)->count())->toBe(4);
+    Mail::assertNothingQueued();
+    $this->postJson('/api/v1/panels/notify', ['stage_uid' => $gd, 'round_uid' => $this->round1->uid])->assertOk()->assertJsonPath('emailed', 4);
     Mail::assertQueued(PlainMail::class, 4);
     $this->postJson("/api/v1/panels/auto-allocate/{$p['token']}/confirm")->assertStatus(422); // one use only
 
@@ -367,7 +372,7 @@ it('allocates PI only after a locked GD, later than the GD slot', function () {
     $c1 = presentCandidate($this, $g, app_no(1));
     presentCandidate($this, $g, app_no(3));
     mark($this, $this->f1, $c1, [8, 8])->assertOk();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
 
     $p = $this->actingAs($this->staff)->postJson('/api/v1/panels/auto-allocate', ['stage_uid' => $pi, 'round_uid' => $this->round1->uid, 'use_centres' => false])->assertOk()->json('data');
     expect($p['placed'])->toHaveCount(1)->and($p['placed'][0]['portal_application_no'])->toBe('PRTM0000001')->and($p['placed'][0]['when'])->toContain('11:00 AM')
@@ -427,7 +432,7 @@ it('uses the admin formula for the stage result when enough members marked, and 
     $r = app(EvaluationService::class)->result($c->fresh());
     expect($r['average'])->toBe('15.00')->and($r['plain_average'])->toBe('13.50')->and($r['rule'])->toBe('(SUM - MAX - MIN) / (COUNT - 2)');
 
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c->uid}/lock")->assertOk();
     $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$gd", ['result_formula' => 'MEDIAN'])->assertStatus(422);
     $this->patchJson("/api/v1/selection-stages/$gd", ['name' => 'Group Discussion (GD)'])->assertOk();
 });
@@ -464,7 +469,7 @@ it('warns, without blocking, when a PI panel member already marked the candidate
     $g = panel($this, $gd, [$this->f1], '10:00', '10:45', 3, name: 'GD 1');
     $c1 = presentCandidate($this, $g, app_no(1));
     mark($this, $this->f1, $c1, [8, 7])->assertOk();
-    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
     $same = panel($this, $pi, [$this->f1, $this->f2], '11:00', '11:20', 1, name: 'PI same');
     $other = panel($this, $pi, [$this->f3], '11:30', '11:50', 1, name: 'PI other');
 
@@ -489,4 +494,54 @@ it('fills slots in the admin\'s slot order (gender, then name descending)', func
     }
     $p = $this->postJson('/api/v1/panels/auto-allocate', ['stage_uid' => $gd, 'round_uid' => $this->round1->uid, 'use_centres' => false])->assertOk()->json('data');
     expect(collect($p['placed'])->pluck('name')->all())->toBe(['Zoya', 'Meera', 'Asha', 'Ravi', 'Kiran', 'Arun']);
+});
+
+// ----- Trinix Admission: same venue, admin lock --------------------------------------------------
+
+it('keeps an in-person candidate\'s PI at the GD venue, preferring other members, and refuses a move elsewhere', function () {
+    publishedCallList($this);
+    [$gd, $pi] = stages($this);
+    $g = panel($this, $gd, [$this->f1], '10:00', '10:45', 3, name: 'GD Delhi');
+    $c1 = presentCandidate($this, $g, app_no(1));
+    mark($this, $this->f1, $c1, [8, 8])->assertOk();
+    $this->actingAs($this->approver)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertOk();
+
+    $kol = Location::create(['institution_id' => $this->w->institution->id, 'code' => 'KOL', 'name' => 'Kolkata campus', 'city' => 'Kolkata']);
+    $date = $g['panel_date'];
+    $mk = function (string $name, ?Location $loc, array $members, string $mode = 'in_person') use ($pi, $date) {
+        $p = $this->actingAs($this->staff)->postJson('/api/v1/panels', ['stage_uid' => $pi, 'round_uid' => $this->round1->uid, 'name' => $name, 'panel_date' => $date,
+            'mode' => $mode, 'location_uid' => $loc?->uid ?? ($mode === 'online' ? null : $this->location->uid), 'meeting_link' => $mode === 'online' ? 'https://meet.example.org/x' : null])->assertCreated()->json('data');
+        foreach ($members as $u) {
+            $this->postJson("/api/v1/panels/{$p['uid']}/members", ['user_uid' => $u->uid, 'role' => 'member'])->assertCreated();
+        }
+
+        return $this->postJson("/api/v1/panels/{$p['uid']}/slots", ['starts_at' => "$date 11:00", 'ends_at' => "$date 11:20", 'capacity' => 1])->assertCreated()->json('data');
+    };
+    $kolPanel = $mk('PI Kolkata', $kol, [$this->f2]);
+    $samePeople = $mk('PI Delhi A', null, [$this->f1]);
+    $others = $mk('PI Delhi B', null, [$this->f3]);
+
+    $this->actingAs($this->staff)->postJson("/api/v1/interview-slots/{$kolPanel['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])
+        ->assertStatus(422)->assertJsonPath('errors.slot_uid.0', 'PRTM0000001 had GD in person at Delhi campus; this stage must be at the same venue.');
+    $p = $this->postJson('/api/v1/panels/auto-allocate', ['stage_uid' => $pi, 'round_uid' => $this->round1->uid])->assertOk()->json('data');
+    expect($p['placed'])->toHaveCount(1)->and($p['placed'][0]['panel'])->toBe('PI Delhi B')
+        ->and($p['placed'][0]['reason'])->toBe('Same venue as GD (Delhi campus), other panel members');
+});
+
+it('lets only the admin lock results, one by one or all complete ones of a stage at once', function () {
+    publishedCallList($this);
+    [$gd] = stages($this);
+    $g = panel($this, $gd, [$this->f1], '10:00', '10:45', 4, name: 'GD 1');
+    $c1 = presentCandidate($this, $g, app_no(1));
+    $c3 = presentCandidate($this, $g, app_no(3));
+    $this->actingAs($this->staff)->postJson("/api/v1/interview-slots/{$g['slots'][0]['uid']}/candidates", ['application_uid' => app_no(4)->uid])->assertCreated();
+    mark($this, $this->f1, $c1, [8, 8])->assertOk();
+    mark($this, $this->f1, $c3, [6, 6], submit: false)->assertOk(); // draft only
+    $this->actingAs($this->f1)->postJson("/api/v1/interview-candidates/{$c1->uid}/lock")->assertForbidden(); // panel members never lock
+    $q = ['stage_uid' => $gd, 'round_uid' => $this->round1->uid];
+    $this->actingAs($this->staff)->postJson('/api/v1/interview-candidates/lock-many', $q)->assertForbidden();
+    $r = $this->actingAs($this->approver)->postJson('/api/v1/interview-candidates/lock-many', $q + ['panel_uid' => $g['uid'], 'date' => $g['panel_date']])->assertOk()->json('data');
+    expect($r['locked'])->toBe(1)->and(collect($r['skipped'])->pluck('reason', 'portal_application_no')->all())->toBe([
+        'PRTM0000003' => '1 panel member(s) have not submitted yet.', 'PRTM0000004' => 'Not marked present (or absent) yet.']);
+    expect($c1->fresh()->status)->toBe('completed');
 });

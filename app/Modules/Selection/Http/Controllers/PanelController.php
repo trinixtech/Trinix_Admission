@@ -146,7 +146,7 @@ class PanelController extends Controller
         $data = $request->validate(['city' => ['nullable', 'string', 'max:100']]);
         $n = $this->panels->bulkSchedule($panel->slots()->orderBy('starts_at')->get()->all(), $data['city'] ?? null, $this->actor());
 
-        return response()->json(['message' => "$n candidates scheduled and emailed.", 'data' => $this->present($panel)]);
+        return response()->json(['message' => "$n candidates scheduled. Send the schedule emails when the schedule is final.", 'data' => $this->present($panel)]);
     }
 
     public function reschedule(Request $request, InterviewCandidate $candidate): JsonResponse
@@ -207,12 +207,41 @@ class PanelController extends Controller
 
     public function lock(InterviewCandidate $candidate): JsonResponse
     {
-        if (! $this->evaluations->mayManage($this->actor(), $candidate)) {
-            $this->ensureVisible($candidate->slot->panel);
-        }
+        $this->ensureVisible($candidate->slot->panel);
         $this->evaluations->lock($candidate, $this->actor());
 
         return response()->json(['data' => $candidate->fresh()->only(['uid', 'status', 'result_locked_at'])]);
+    }
+
+    /** "Fix, then send": email the booked candidates of a stage (or one panel) who have not been told their slot yet. */
+    public function notify(Request $request): JsonResponse
+    {
+        [$stage, $round, $panel] = $this->stageRound($request);
+        $this->access()->authorize($this->actor(), 'panels.manage', new Scope(null, $stage->course_id, $stage->admission_cycle_id));
+        $n = $this->panels->notifyPending($stage->id, $round->id, $panel?->id, $this->actor());
+
+        return response()->json(['message' => "$n candidates were emailed their schedule.", 'emailed' => $n]);
+    }
+
+    /** The admin locks every complete result of a stage at once (optionally one panel or one day). */
+    public function lockMany(Request $request): JsonResponse
+    {
+        [$stage, $round, $panel] = $this->stageRound($request);
+        $this->access()->authorize($this->actor(), 'evaluations.lock', new Scope(null, $stage->course_id, $stage->admission_cycle_id), 'panels.manage');
+        $date = $request->validate(['date' => ['nullable', 'date']])['date'] ?? null;
+        $r = $this->evaluations->lockMany($stage->id, $round->id, $panel?->id, $date, $this->actor());
+
+        return response()->json(['data' => $r, 'message' => "{$r['locked']} results locked".($r['skipped'] ? ', '.count($r['skipped']).' not yet complete.' : '.')]);
+    }
+
+    /** @return array{0: SelectionStage, 1: AdmissionRound, 2: ?InterviewPanel} */
+    private function stageRound(Request $request): array
+    {
+        $d = $request->validate(['stage_uid' => ['required', Rule::exists('selection_stages', 'uid')], 'round_uid' => ['required', Rule::exists('admission_rounds', 'uid')],
+            'panel_uid' => ['nullable', Rule::exists('interview_panels', 'uid')]]);
+
+        return [SelectionStage::where('uid', $d['stage_uid'])->firstOrFail(), AdmissionRound::where('uid', $d['round_uid'])->firstOrFail(),
+            isset($d['panel_uid']) ? InterviewPanel::where('uid', $d['panel_uid'])->firstOrFail() : null];
     }
 
     /** Send locked candidates to a later stage's panel (e.g. from GD to PI). */
@@ -307,7 +336,7 @@ class PanelController extends Controller
                     'uid' => $s->uid, 'starts_at' => $s->starts_at->toIso8601String(), 'ends_at' => $s->ends_at->toIso8601String(),
                     'time' => $s->starts_at->setTimezone($tz)->format('g:i A').'–'.$s->ends_at->setTimezone($tz)->format('g:i A'),
                     'capacity' => $s->capacity,
-                    'candidates' => $s->candidates->map(fn ($c) => ['uid' => $c->uid, 'status' => $c->status, 'application_uid' => $c->application->uid,
+                    'candidates' => $s->candidates->map(fn ($c) => ['uid' => $c->uid, 'status' => $c->status, 'notified' => (bool) $c->notified_at, 'application_uid' => $c->application->uid,
                         'portal_application_no' => $c->application->portal_application_no, 'name' => $c->application->applicant->full_name, 'city' => $c->application->applicant->city]),
                 ]),
         ];

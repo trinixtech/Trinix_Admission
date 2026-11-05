@@ -173,6 +173,8 @@ Route::prefix('v1')->group(function () {
         Route::post('interview-candidates/{candidate}/lock', [PanelController::class, 'lock']);
         Route::post('interview-candidates/{candidate}/conflict', [PanelController::class, 'conflict']);
         Route::post('interview-candidates/send-on', [PanelController::class, 'sendOn']);
+        Route::post('interview-candidates/lock-many', [PanelController::class, 'lockMany']);
+        Route::post('panels/notify', [PanelController::class, 'notify']);
         Route::post('interview-candidates/swap', [PanelController::class, 'swap']);
 
         // Selection: marking (panel members)

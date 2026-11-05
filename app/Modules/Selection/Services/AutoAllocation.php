@@ -88,7 +88,7 @@ class AutoAllocation
             }
             $busy = InterviewCandidate::with('slot')->where('application_id', $app->id)->where('active', true)->get()
                 ->map(fn ($c) => [$c->slot->starts_at, $c->slot->ends_at])->all();
-            $pending[$app->id] = ['app' => $app, 'after' => $after, 'busy' => $busy];
+            $pending[$app->id] = ['app' => $app, 'after' => $after, 'busy' => $busy, 'venue' => PanelService::earlierVenue($app, $panels->first())];
         }
 
         // Level by level: everyone whose first centre preference has room is placed before anyone is sent to a
@@ -96,9 +96,14 @@ class AutoAllocation
         foreach ($useCentres ? range(0, 5) : [0] as $level) {
             foreach ($pending as $appId => $p) {
                 $app = $p['app'];
+                $venue = $p['venue'];
+                // Main rule: after an in-person GD, the PI is at the same venue, on a panel without the GD panel's members if possible.
+                $shared = fn ($id) => $venue ? count(array_intersect($panels[$id]->members->whereNull('removed_at')->pluck('user_id')->all(), $venue['members'])) : 0;
                 $order = $panels->keys()
-                    ->filter(fn ($id) => ! $useCentres || $this->closeness($app, $panels[$id]) === $level)
-                    ->sortBy(fn ($id) => [($capacity[$id] ?? 0) > 0 ? $load[$id] / max(1, $load[$id] + ($capacity[$id] ?? 0)) : 2, $id])->values();
+                    ->filter(fn ($id) => $venue
+                        ? $level === 0 && $panels[$id]->mode === 'in_person' && $panels[$id]->location_id === $venue['location_id']
+                        : ! $useCentres || $this->closeness($app, $panels[$id]) === $level)
+                    ->sortBy(fn ($id) => [$shared($id), ($capacity[$id] ?? 0) > 0 ? $load[$id] / max(1, $load[$id] + ($capacity[$id] ?? 0)) : 2, $id])->values();
                 $chosen = null;
                 foreach ($order as $pid) {
                     if (in_array($pid, $conflicts[$appId] ?? [], true)) {
@@ -121,14 +126,15 @@ class AutoAllocation
                 $load[$chosen->interview_panel_id]++;
                 $capacity[$chosen->interview_panel_id]--;
                 $panel = $panels[$chosen->interview_panel_id];
-                $row = $this->row($app, $chosen, $useCentres ? $this->why($app, $panel) : 'Next free slot', $panel);
+                $why = $venue ? "Same venue as {$venue['stage']} ({$venue['location']})".($shared($panel->id) ? '' : ', other panel members') : ($useCentres ? $this->why($app, $panel) : 'Next free slot');
+                $row = $this->row($app, $chosen, $why, $panel);
                 $row['warning'] = PanelService::priorMarkersWarning($app, $panel);
                 $placed[] = $row;
                 unset($pending[$appId]);
             }
         }
         foreach ($pending as $p) {
-            $unplaced[] = $this->row($p['app'], null, 'No free slot without a clash');
+            $unplaced[] = $this->row($p['app'], null, $p['venue'] ? "No free slot at {$p['venue']['location']} (same venue as {$p['venue']['stage']})" : 'No free slot without a clash');
         }
         usort($placed, fn ($a, $b) => [$a['when_at'], $a['panel']] <=> [$b['when_at'], $b['panel']]);
 

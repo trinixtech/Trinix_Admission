@@ -15,6 +15,7 @@ use App\Modules\Selection\Models\InterviewSlot;
 use App\Modules\Selection\Models\PanelConflict;
 use App\Modules\Selection\Models\SelectionStage;
 use Brick\Math\Exception\DivisionByZeroException;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -157,10 +158,11 @@ class EvaluationService
         });
     }
 
+    /** Marks are locked by the admin (evaluations.lock), one candidate or many at once (lockMany). */
     public function lock(InterviewCandidate $c, User $actor): void
     {
-        if (! $this->mayManage($actor, $c)) {
-            throw new AuthorizationException('Only the panel chair or a Central Admin can lock results.');
+        if (! $this->access->can($actor, 'evaluations.lock', $c->application->scope())) {
+            throw new AuthorizationException('Only the admin can lock results.');
         }
         if ($c->status !== 'present') {
             throw ValidationException::withMessages(['candidate' => $c->status === 'completed' ? 'Already locked.' : 'Only a present candidate has results to lock.']);
@@ -174,6 +176,33 @@ class EvaluationService
             $c->forceFill(['status' => 'completed', 'result_locked_at' => now(), 'result_locked_by' => $actor->id])->save();
             $this->auditor->record('evaluation.locked', $c->application, null, ['stage' => $c->stage->code, 'average' => $this->result($c)['average']], scope: $c->application->scope());
         });
+    }
+
+    /**
+     * Lock every complete result of a stage in a round at once, optionally one panel or one day (IST).
+     *
+     * @return array{locked: int, skipped: list<array{portal_application_no: string, reason: string}>}
+     */
+    public function lockMany(int $stageId, int $roundId, ?int $panelId, ?string $date, User $actor): array
+    {
+        $locked = 0;
+        $skipped = [];
+        $tz = config('app.display_timezone');
+        $q = InterviewCandidate::with('slot.panel', 'application', 'stage')->where(['selection_stage_id' => $stageId, 'admission_round_id' => $roundId, 'active' => true])
+            ->whereIn('status', ['scheduled', 'present'])
+            ->when($panelId, fn ($w) => $w->whereHas('slot', fn ($s) => $s->where('interview_panel_id', $panelId)))
+            ->when($date, fn ($w) => $w->whereHas('slot', fn ($s) => $s->whereBetween('starts_at', [
+                CarbonImmutable::parse($date, $tz)->startOfDay()->utc(), CarbonImmutable::parse($date, $tz)->endOfDay()->utc()])));
+        foreach ($q->get() as $c) {
+            try {
+                $this->lock($c, $actor);
+                $locked++;
+            } catch (ValidationException $e) {
+                $skipped[] = ['portal_application_no' => $c->application->portal_application_no, 'reason' => $c->status === 'scheduled' ? 'Not marked present (or absent) yet.' : collect($e->errors())->flatten()->first()];
+            }
+        }
+
+        return ['locked' => $locked, 'skipped' => $skipped];
     }
 
     /** Totals per evaluator, the average and outlier flags. */

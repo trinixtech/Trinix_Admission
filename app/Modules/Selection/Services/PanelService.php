@@ -105,7 +105,8 @@ class PanelService
 
     // ----- Scheduling ----------------------------------------------------------------------------
 
-    public function schedule(Application $app, InterviewSlot $slot, User $actor, bool $notify = true): InterviewCandidate
+    /** Books a slot. The applicant is emailed later, with everyone else, by notifyPending() ("fix, then send"). */
+    public function schedule(Application $app, InterviewSlot $slot, User $actor, bool $notify = false): InterviewCandidate
     {
         $panel = $slot->panel()->with('stage', 'location')->first();
         $this->checkCanBook($app, $slot, $panel, null);
@@ -119,8 +120,8 @@ class PanelService
 
             return $c;
         });
-        if ($notify) {
-            $this->notifier->send('interview_scheduled', $app, $this->vars($panel, $slot));
+        if ($notify && $this->notifier->send('interview_scheduled', $app, $this->vars($panel, $slot))) {
+            $candidate->forceFill(['notified_at' => now()])->save();
         }
 
         return $candidate;
@@ -144,7 +145,9 @@ class PanelService
             $this->auditor->record('interview.rescheduled', $app, ['starts_at' => $old->starts_at->toIso8601String(), 'panel' => $old->panel->name],
                 ['starts_at' => $slot->starts_at->toIso8601String(), 'panel' => $slot->panel->name], $reason, $app->scope());
         });
-        $this->notifier->send('interview_rescheduled', $app, $this->vars($panel, $slot));
+        if ($candidate->notified_at) { // already told the old slot: tell the new one now
+            $this->notifier->send('interview_rescheduled', $app, $this->vars($panel, $slot));
+        }
 
         return $candidate->fresh();
     }
@@ -182,6 +185,9 @@ class PanelService
             }
         });
         foreach ([[$a, $sb], [$b, $sa]] as [$c, $slot]) {
+            if (! $c->notified_at) {
+                continue; // told later with everyone else
+            }
             $this->notifier->send('interview_rescheduled', $c->application, $this->vars($slot->panel()->with('stage', 'location')->first(), $slot));
         }
     }
@@ -240,6 +246,48 @@ class PanelService
         }
 
         return $n;
+    }
+
+    /**
+     * "Fix, then send": email every booked candidate of the stage and round (optionally one panel) who has not been
+     * told their slot yet. Returns how many were emailed.
+     */
+    public function notifyPending(int $stageId, int $roundId, ?int $panelId, User $actor): int
+    {
+        $n = 0;
+        InterviewCandidate::with('slot.panel.stage', 'slot.panel.location', 'application')
+            ->where(['selection_stage_id' => $stageId, 'admission_round_id' => $roundId, 'status' => 'scheduled', 'active' => true])->whereNull('notified_at')
+            ->when($panelId, fn ($q) => $q->whereHas('slot', fn ($s) => $s->where('interview_panel_id', $panelId)))
+            ->each(function (InterviewCandidate $c) use (&$n) {
+                if ($this->notifier->send('interview_scheduled', $c->application, $this->vars($c->slot->panel, $c->slot))) {
+                    $c->forceFill(['notified_at' => now()])->save();
+                    $n++;
+                }
+            });
+        $this->auditor->record('interview.schedule_emailed', null, null, ['stage_id' => $stageId, 'round_id' => $roundId, 'panel_id' => $panelId, 'emailed' => $n], actorId: $actor->id);
+
+        return $n;
+    }
+
+    /**
+     * The venue an applicant's later stage must use (Main rule): if an earlier stage of this round was in person,
+     * every later in-person stage is at the same location. Null when there is no such earlier interview.
+     *
+     * @return array{location_id: int, location: string, stage: string, members: list<int>}|null
+     */
+    public static function earlierVenue(Application $app, InterviewPanel $panel): ?array
+    {
+        $panel->loadMissing('stage');
+        $prev = InterviewCandidate::with('slot.panel.location', 'slot.panel.members', 'stage')
+            ->where(['application_id' => $app->id, 'admission_round_id' => $panel->admission_round_id])->whereIn('status', ['scheduled', 'present', 'completed'])
+            ->whereHas('stage', fn ($q) => $q->where('course_id', $panel->stage->course_id)->where('sort_order', '<', $panel->stage->sort_order))
+            ->get()->sortByDesc(fn ($c) => $c->stage->sort_order)->first();
+        if (! $prev || $prev->slot->panel->mode !== 'in_person' || ! $prev->slot->panel->location_id) {
+            return null;
+        }
+
+        return ['location_id' => $prev->slot->panel->location_id, 'location' => $prev->slot->panel->location->name, 'stage' => $prev->stage->code,
+            'members' => $prev->slot->panel->members->whereNull('removed_at')->pluck('user_id')->all()];
     }
 
     public function declareConflict(InterviewPanel $panel, User $member, Application $app, string $reason): void
@@ -313,6 +361,10 @@ class PanelService
         $taken = $slot->candidates()->where('active', true)->when($exceptCandidate, fn ($q) => $q->where('id', '!=', $exceptCandidate))->count();
         if ($taken >= $slot->capacity) {
             throw ValidationException::withMessages(['slot_uid' => 'This slot is full.']);
+        }
+        $venue = self::earlierVenue($app, $panel);
+        if ($venue && ($panel->mode !== 'in_person' || $panel->location_id !== $venue['location_id'])) {
+            throw ValidationException::withMessages(['slot_uid' => "{$app->portal_application_no} had {$venue['stage']} in person at {$venue['location']}; this stage must be at the same venue."]);
         }
         $conflicted = PanelConflict::where(['interview_panel_id' => $panel->id, 'application_id' => $app->id])
             ->whereIn('user_id', $panel->members()->whereNull('removed_at')->pluck('user_id'))->exists();
