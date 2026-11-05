@@ -11,9 +11,11 @@ import CourseCyclePicker from '@/components/CourseCyclePicker.vue';
 import AutoAllocate from '@/components/AutoAllocate.vue';
 import { api, errorMessage, fieldErrors, type Page } from '@/lib/api';
 import { date } from '@/lib/format';
+import { useAuth } from '@/stores/auth';
 
 /** Interview panels: in person (a location in any city) or online. */
 const router = useRouter();
+const auth = useAuth();
 const sel = ref<{ course_uid: string; cycle_uid: string } | null>(null);
 const stages = ref<any[]>([]);
 const rounds = ref<any[]>([]);
@@ -55,6 +57,43 @@ function start() {
     errors.value = {};
     open.value = true;
 }
+// Schedule from Excel, send the fixed schedule, lock results (Trinix Admission Main)
+const act = ref<{ stage_uid: string; round_uid: string; date: string }>({ stage_uid: '', round_uid: '', date: '' });
+watch([stages, rounds], () => {
+    act.value.stage_uid ||= stages.value[0]?.uid ?? '';
+    act.value.round_uid ||= rounds.value[0]?.uid ?? '';
+});
+const msg = ref('');
+const file = ref<File | null>(null);
+const preview = ref<any>(null);
+const templateUrl = () => `/api/v1/panels/schedule-template?${new URLSearchParams(sel.value as any)}`;
+async function run(fn: () => Promise<any>) {
+    msg.value = err.value = '';
+    try {
+        const r = await fn();
+        msg.value = r?.data?.message ?? '';
+        await load();
+        return r;
+    } catch (e) {
+        err.value = errorMessage(e);
+    }
+}
+async function upload() {
+    if (!file.value || !sel.value) return;
+    const d = new FormData();
+    d.append('file', file.value);
+    d.append('course_uid', sel.value.course_uid);
+    d.append('round_uid', act.value.round_uid);
+    const r = await run(() => api.post('/panels/schedule-import', d));
+    if (r) preview.value = r.data.data;
+}
+async function confirmImport() {
+    const r = await run(() => api.post(`/panels/schedule-import/${preview.value.token}/confirm`));
+    if (r) preview.value = null;
+}
+const notify = () => run(() => api.post('/panels/notify', { stage_uid: act.value.stage_uid, round_uid: act.value.round_uid }));
+const lockAll = () => run(() => api.post('/interview-candidates/lock-many', { stage_uid: act.value.stage_uid, round_uid: act.value.round_uid, date: act.value.date || null }));
+
 async function create() {
     errors.value = {};
     try {
@@ -76,7 +115,27 @@ async function create() {
     </PageHeader>
     <CourseCyclePicker v-model="sel" />
     <Alert v-if="sel && !stages.length" tone="info">This course has no selection stages yet. Set them up under <RouterLink to="/selection/stages" class="btn-link">Stages and criteria</RouterLink>.</Alert>
+    <Alert v-if="msg" tone="success">{{ msg }}</Alert>
     <Alert v-if="err" tone="error">{{ err }}</Alert>
+
+    <section v-if="sel && stages.length && rounds.length" class="card mb-4 space-y-3">
+        <h2 class="text-lg font-semibold">Schedule, emails and results</h2>
+        <div class="grid gap-3 sm:grid-cols-3">
+            <Field v-model="act.stage_uid" label="Stage" type="select" :options="stages.map((s) => ({ value: s.uid, label: `${s.code} · ${s.name}` }))" />
+            <Field v-model="act.round_uid" label="Round" type="select" :options="rounds.map((r) => ({ value: r.uid, label: r.name }))" />
+            <Field v-if="auth.can('evaluations.lock')" v-model="act.date" label="Day (for locking; optional)" type="date" />
+        </div>
+        <div class="flex flex-wrap items-end gap-2">
+            <a :href="templateUrl()" class="btn-secondary">Download Excel template</a>
+            <div><label class="label" for="sched-file">Filled template</label><input id="sched-file" type="file" accept=".xlsx,.csv" class="input py-2" @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></div>
+            <button type="button" class="btn-secondary" :disabled="!file" @click="upload">Upload and check</button>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button type="button" class="btn-primary" @click="notify">Send schedule emails</button>
+            <button v-if="auth.can('evaluations.lock')" type="button" class="btn-secondary" @click="lockAll">Lock all complete results</button>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400">Booking candidates (by hand or automatically) does not email them. When the schedule is final, "Send schedule emails" tells everyone not yet told; later changes are emailed at once. Locking: every candidate whose panel members have all submitted is locked; the rest are listed.</p>
+    </section>
 
     <div class="mb-4 max-w-xs"><Field v-model="filterDate" label="Date" type="date" /></div>
     <div class="table-wrap">
@@ -116,6 +175,29 @@ async function create() {
                 <button type="submit" class="btn-primary">Create</button>
             </div>
         </form>
+    </Modal>
+    <Modal :open="!!preview" title="Check the schedule" @close="preview = null">
+        <template v-if="preview">
+            <Alert v-if="preview.errors.length" tone="error">Fix these rows in the file and upload it again. Nothing was saved.</Alert>
+            <ul v-if="preview.errors.length" class="mb-3 text-sm"><li v-for="(e, i) in preview.errors" :key="i">Row {{ e.row }}: {{ e.message }}</li></ul>
+            <div class="table-wrap">
+                <table class="table">
+                    <thead><tr><th>Panel</th><th>Where</th><th>Slots</th><th>Members</th></tr></thead>
+                    <tbody>
+                        <tr v-for="p in preview.panels" :key="p.stage + p.name + p.date">
+                            <td>{{ p.stage }} · {{ p.name }}<span v-if="p.exists" class="block text-sm">adds to the existing panel</span><span class="block text-sm">{{ date(p.date) }}, {{ p.first }} to {{ p.last }}</span></td>
+                            <td>{{ p.mode === 'online' ? 'Online' : `${p.venue}${p.room ? ' · ' + p.room : ''}` }}</td>
+                            <td>{{ p.slots }} ({{ p.places }} places)</td>
+                            <td class="text-sm">{{ p.members.join(', ') || '—' }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-3 flex justify-end gap-2">
+                <button type="button" class="btn-secondary" @click="preview = null">Cancel</button>
+                <button type="button" class="btn-primary" :disabled="!preview.token" @click="confirmImport">Save the schedule</button>
+            </div>
+        </template>
     </Modal>
     <AutoAllocate :open="!!auto" :kind="auto ?? 'candidates'" :stages="stages" :rounds="rounds" :branches="branches" @close="auto = null" @done="load" />
 </template>

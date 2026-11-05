@@ -89,10 +89,10 @@ const confirm = () => run(async () => {
                     </tbody>
                 </table>
             </div>
-            <p class="mt-2 text-sm">{{ kind === 'candidates' ? `${preview.placed.length} placed, ${preview.unplaced.length} not placed. Nothing is saved or emailed until you confirm.` : `${preview.assignments.length} places to fill. Nothing is saved until you confirm.` }}</p>
+            <p class="mt-2 text-sm">{{ kind === 'candidates' ? `${preview.placed.length} placed, ${preview.unplaced.length} not placed. Nothing is saved until you confirm; emails go out later with "Send schedule emails".` : `${preview.assignments.length} places to fill. Nothing is saved until you confirm.` }}</p>
             <div class="mt-3 flex justify-end gap-2">
                 <button type="button" class="btn-secondary" @click="preview = null">Back</button>
-                <button type="button" class="btn-primary" :disabled="busy || !(kind === 'candidates' ? preview.placed.length : preview.assignments.length)" @click="confirm">{{ kind === 'candidates' ? 'Confirm and email' : 'Confirm' }}</button>
+                <button type="button" class="btn-primary" :disabled="busy || !(kind === 'candidates' ? preview.placed.length : preview.assignments.length)" @click="confirm">Confirm</button>
             </div>
         </template>
     </Modal>

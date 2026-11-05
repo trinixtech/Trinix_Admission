@@ -129,15 +129,6 @@ async function attendance(c: any, present: boolean) {
         err.value = errorMessage(e);
     }
 }
-async function lock(c: any) {
-    try {
-        await api.post(`/interview-candidates/${c.uid}/lock`);
-        msg.value = `Result locked for ${c.application.name}.`;
-        await loadSlot();
-    } catch (e) {
-        err.value = errorMessage(e);
-    }
-}
 
 const dialog = ref<{ kind: 'conflict' | 'reopen'; target: any } | null>(null);
 const dialogErr = ref('');
@@ -259,7 +250,6 @@ async function dialogSubmit(reason: string) {
                         <button v-if="isChair" type="button" class="btn-link" @click="dialog = { kind: 'reopen', target: e.uid }">Reopen</button>
                     </li>
                 </ul>
-                <button v-if="isChair && c.status === 'present' && c.result.evaluators.length === c.expected" type="button" class="btn-secondary mt-1" @click="lock(c)">Lock result</button>
             </div>
         </section>
 

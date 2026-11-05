@@ -174,7 +174,7 @@ async function sendOn() {
                 </div>
                 <ul>
                     <li v-for="c in s.candidates" :key="c.uid" class="flex min-h-11 flex-wrap items-center justify-between gap-2 border-t border-slate-100 py-1 dark:border-slate-800">
-                        <span>{{ c.name }} <span class="text-sm text-slate-600 dark:text-slate-400">{{ c.portal_application_no }} · {{ c.city ?? '' }}</span> <StatusBadge :status="c.status" /></span>
+                        <span>{{ c.name }} <span class="text-sm text-slate-600 dark:text-slate-400">{{ c.portal_application_no }} · {{ c.city ?? '' }}</span> <StatusBadge :status="c.status" /><span v-if="c.status === 'scheduled' && !c.notified" class="ml-1 text-sm text-amber-700 dark:text-amber-400">not emailed yet</span></span>
                         <span class="flex flex-wrap gap-1">
                             <button v-if="['scheduled', 'absent'].includes(c.status)" type="button" class="btn-secondary" @click="run(() => api.post(`/interview-candidates/${c.uid}/attendance`, { present: true }))">Present</button>
                             <button v-if="['scheduled', 'present'].includes(c.status)" type="button" class="btn-secondary" @click="run(() => api.post(`/interview-candidates/${c.uid}/attendance`, { present: false }))">Absent</button>

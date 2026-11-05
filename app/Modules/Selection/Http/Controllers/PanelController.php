@@ -202,7 +202,7 @@ class PanelController extends Controller
                 'result' => $this->evaluations->result($c),
             ]);
 
-        return response()->json(['data' => ['panel' => $this->present($panel), 'candidates' => $rows, 'can_lock' => $chair || $this->access()->can($this->actor(), 'evaluations.reopen', PanelService::scope($panel))]]);
+        return response()->json(['data' => ['panel' => $this->present($panel), 'candidates' => $rows, 'can_lock' => $this->access()->can($this->actor(), 'evaluations.lock', PanelService::scope($panel))]]);
     }
 
     public function lock(InterviewCandidate $candidate): JsonResponse
