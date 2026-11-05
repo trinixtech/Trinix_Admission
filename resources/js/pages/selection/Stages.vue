@@ -68,6 +68,12 @@ function save(s: any) {
         ...(f.criteria.length ? { criteria: f.criteria } : {}),
     }), `${s.code} saved.`);
 }
+function toggle(s: any) {
+    const on = s.status !== 'active';
+    return run(() => api.patch(`/selection-stages/${s.uid}`, { status: on ? 'active' : 'inactive' }), on ? `${s.code} switched on.` : `${s.code} switched off. It is left out of panels, the schedule template and the workflow.`);
+}
+const activeNo = (i: number) => stages.value.slice(0, i + 1).filter((x) => x.status === 'active').length;
+const previousActive = (i: number) => [...stages.value.slice(0, i)].reverse().find((x) => x.status === 'active');
 const orderKeys = [{ value: '', label: '(none)' }, { value: 'name', label: 'Name' }, { value: 'gender', label: 'Gender' }, { value: 'date_of_birth', label: 'Date of birth' }, { value: 'portal_application_no', label: 'Application number' }];
 const total = (f: any) => f.criteria.reduce((t: number, c: any) => t + Number(c.max_marks || 0), 0);
 </script>
@@ -92,9 +98,16 @@ const total = (f: any) => f.criteria.reduce((t: number, c: any) => t + Number(c.
             </form>
         </div>
 
-        <section v-for="(s, i) in stages" :key="s.uid" class="card mb-4">
-            <h2 class="mb-3 text-lg font-semibold">{{ Number(i) + 1 }} · {{ s.code }} <span class="font-normal">{{ s.name }}</span></h2>
-            <template v-if="forms[s.uid]">
+        <section v-for="(s, i) in stages" :key="s.uid" class="card mb-4" :class="{ 'opacity-75': s.status !== 'active' }">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 class="text-lg font-semibold">
+                    <template v-if="s.status === 'active'">{{ activeNo(Number(i)) }} · </template>{{ s.code }} <span class="font-normal">{{ s.name }}</span>
+                    <span v-if="s.status !== 'active'" class="ml-2 rounded-full bg-slate-200 px-2 py-0.5 align-middle text-xs font-medium text-slate-800 dark:bg-slate-700 dark:text-slate-100">Switched off</span>
+                </h2>
+                <button v-if="auth.can('stages.configure')" type="button" class="btn-secondary" @click="toggle(s)">{{ s.status === 'active' ? 'Switch off' : 'Switch on' }}</button>
+            </div>
+            <p v-if="s.status !== 'active'" class="text-sm text-slate-600 dark:text-slate-400">Not used for this course and cycle. Switch it on to add panels and marks.</p>
+            <template v-else-if="forms[s.uid]">
                 <p class="label">Criteria (total {{ total(forms[s.uid]) }})</p>
                 <div v-for="(c, j) in forms[s.uid].criteria" :key="j" class="mb-2 flex items-end gap-2">
                     <div class="grow"><Field v-model="c.name" :label="`Criterion ${Number(j) + 1}`" :disabled="!auth.can('stages.configure')" /></div>
@@ -130,14 +143,14 @@ const total = (f: any) => f.criteria.reduce((t: number, c: any) => t + Number(c.
                     </div>
                 </fieldset>
 
-                <fieldset v-if="i > 0" class="mt-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                    <legend class="px-1 font-medium">Coming from {{ stages[i - 1].code }}</legend>
+                <fieldset v-if="previousActive(Number(i))" class="mt-4 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                    <legend class="px-1 font-medium">Coming from {{ previousActive(Number(i)).code }}</legend>
                     <label class="flex min-h-11 items-center gap-3">
                         <input v-model="forms[s.uid].show_previous_marks" type="checkbox" class="size-5" :disabled="!auth.can('stages.configure')" />
                         Panel sees marks from earlier stages
                     </label>
                     <div class="max-w-xs">
-                        <Field v-model="forms[s.uid].min_previous_average" :label="`Minimum ${stages[i - 1].code} average to be sent here`" type="number" step="0.01" help="Optional. Leave empty for no minimum." :disabled="!auth.can('stages.configure')" />
+                        <Field v-model="forms[s.uid].min_previous_average" :label="`Minimum ${previousActive(Number(i)).code} average to be sent here`" type="number" step="0.01" help="Optional. Leave empty for no minimum." :disabled="!auth.can('stages.configure')" />
                     </div>
                 </fieldset>
                 <button v-if="auth.can('stages.configure')" type="button" class="btn-primary mt-4" @click="save(s)">Save {{ s.code }}</button>

@@ -4,6 +4,7 @@ import Icon from '@/components/Icon.vue';
 import { visibleNav } from '@/lib/nav';
 import PageHeader from '@/components/PageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
+import WorkflowTracker from '@/components/WorkflowTracker.vue';
 import { api } from '@/lib/api';
 import { scopeLabel } from '@/lib/format';
 import { useAuth } from '@/stores/auth';
@@ -21,6 +22,8 @@ onMounted(async () => {
 
 <template>
     <PageHeader :title="`Hello, ${auth.me?.name ?? ''}`" subtitle="Your roles and the admission cycles in progress." />
+
+    <WorkflowTracker v-if="auth.can('cycles.view')" />
 
     <section v-if="modules.length" aria-labelledby="quick" class="mb-6">
         <h2 id="quick" class="sr-only">Quick access</h2>
@@ -59,7 +62,7 @@ onMounted(async () => {
                 <li v-for="c in cycles" :key="c.uid" class="flex items-center justify-between gap-3 py-2">
                     <RouterLink :to="`/cycles/${c.uid}`" class="btn-link">{{ c.name }}</RouterLink>
                     <span class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                        {{ c.rounds_count }} rounds <StatusBadge :status="c.status" />
+                        {{ c.rounds_count }} {{ c.rounds_count === 1 ? 'round' : 'rounds' }} <StatusBadge :status="c.status" />
                     </span>
                 </li>
                 <li v-if="!cycles.length" class="py-2 text-slate-600 dark:text-slate-400">No draft or open cycles.</li>

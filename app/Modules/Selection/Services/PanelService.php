@@ -215,7 +215,7 @@ class PanelService
     }
 
     /**
-     * Fill the given slots, in order, with called applicants not yet scheduled for this stage.
+     * Fill the given slots, in order, with applicants of the round not yet scheduled for this stage.
      *
      * @param  list<InterviewSlot>  $slots
      */

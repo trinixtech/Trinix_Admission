@@ -162,7 +162,7 @@ async function sendOn() {
                     <button type="submit" class="btn-secondary">Add slots</button>
                 </form>
                 <form class="mt-4 flex flex-wrap items-end gap-2" @submit.prevent="run(() => api.post(`/panels/${uid}/bulk-schedule`, { city: bulkCity || null }))">
-                    <div class="grow"><Field v-model="bulkCity" label="Fill free places with called applicants from city (optional)" /></div>
+                    <div class="grow"><Field v-model="bulkCity" label="Fill free places with applicants from city (optional)" /></div>
                     <button type="submit" class="btn-primary" :disabled="!p.slots.length">Fill and email</button>
                 </form>
             </section>

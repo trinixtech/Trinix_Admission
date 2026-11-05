@@ -188,7 +188,7 @@ async function closeCycle(reason: string) {
     <Modal :open="roundOpen" :title="rounds.length ? 'Create fresh round' : 'Create first round'" @close="roundOpen = false">
         <form class="space-y-4" @submit.prevent="createRound">
             <Alert v-if="roundErr" tone="error">{{ roundErr }}</Alert>
-            <p v-if="rounds.length">A fresh round has its own offerings, dates and history. It is separate from waitlist movement.</p>
+            <p v-if="rounds.length">A fresh round has its own dates, imports, interviews and merit lists.</p>
             <Field v-model="roundName" label="Name" required />
             <div class="flex justify-end gap-2"><button type="button" class="btn-secondary" @click="roundOpen = false">Cancel</button><button type="submit" class="btn-primary">Create</button></div>
         </form>

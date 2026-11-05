@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // Default reservation categories accepted in imports (the admin-editable rule sets come in Phase 6).
+    // Category codes accepted in imports (kept on the application as imported).
     'categories' => ['GEN', 'SC', 'ST', 'OBC-NCL', 'EWS'],
     'genders' => ['Male', 'Female', 'Transgender'],
     'exams' => ['CAT', 'IPMAT', 'OTHER'],

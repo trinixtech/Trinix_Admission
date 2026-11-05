@@ -66,6 +66,11 @@ export const useAuth = defineStore('auth', {
                 await api.post('/logout');
             } finally {
                 this.me = null;
+                try {
+                    ['pick.course', 'pick.cycle', 'pick.round'].forEach((k) => localStorage.removeItem(k));
+                } catch {
+                    /* storage unavailable */
+                }
             }
         },
     },

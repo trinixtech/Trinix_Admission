@@ -38,7 +38,7 @@ async function load() {
 async function loadSetup() {
     if (!sel.value) return;
     const [s, r] = await Promise.all([api.get('/selection-stages', { params: sel.value }), api.get(`/admission-cycles/${sel.value.cycle_uid}/rounds`).catch(() => ({ data: { data: [] } }))]);
-    stages.value = s.data.data;
+    stages.value = s.data.data.filter((x: any) => x.status === 'active');
     rounds.value = r.data.data.filter((x: any) => x.status !== 'closed');
 }
 onMounted(async () => {

@@ -53,7 +53,7 @@ const confirm = () => run(async () => {
             <Field v-model="form.round_uid" label="Round" type="select" :options="rounds.map((r) => ({ value: r.uid, label: r.name }))" />
             <template v-if="kind === 'candidates'">
                 <label class="flex min-h-11 items-center gap-3"><input v-model="form.use_centres" type="checkbox" class="size-5" /> Match the applicant's GD/PI centre preferences, then their city</label>
-                <p class="text-sm text-slate-600 dark:text-slate-400">Called applicants not yet scheduled for this stage are spread over the stage's active panels. For PI, only applicants with a locked GD result, in a slot after their GD.</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">Applicants imported into the round and not yet scheduled for this stage are spread over the stage's active panels. For PI, only applicants with a locked GD result, in a slot after their GD.</p>
             </template>
             <template v-else>
                 <Field v-model="form.members_per_panel" label="Members per panel" type="number" />

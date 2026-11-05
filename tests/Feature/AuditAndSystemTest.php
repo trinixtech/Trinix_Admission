@@ -3,6 +3,7 @@
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\System\Models\SystemSetting;
 use App\Support\Scope;
+use Illuminate\Support\Facades\Artisan;
 
 it('lets a branch admin see only audit rows from their branch', function () {
     $w = world();
@@ -88,4 +89,10 @@ it('describes the current user with permissions and roles', function () {
 
 it('serves the single-page app for screen URLs', function () {
     $this->withoutVite()->get('/branches')->assertOk()->assertSee('<div id="app">', false);
+});
+
+it('schedules only commands that exist', function () {
+    preg_match_all('/\$task\(\'[^\']+\', \'([^\']+)\'/', file_get_contents(base_path('routes/console.php')), $m);
+    expect($m[1])->not->toBeEmpty()
+        ->and(array_diff($m[1], array_keys(Artisan::all())))->toBe([]);
 });

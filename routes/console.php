@@ -29,10 +29,6 @@ $task('documents-scan-pending', 'documents:scan-pending')->everyFiveMinutes();
 // Interview reminders the day before, at 09:00 Indian time.
 $task('interview-reminders', 'interviews:send-reminders')->dailyAt('03:30');
 
-// Offer and waitlist-hold reminders, at 09:30 Indian time.
-$task('offer-reminders', 'offers:send-reminders')->dailyAt('04:00');
-$task('fee-reminders', 'fees:send-reminders')->dailyAt('04:10');
-
 // Shared hosting (no SSH, no long-running worker): the every-minute cron also works the queue,
 // processing imports, document scans and emails for up to 50 seconds per minute.
 if (config('queue.run_from_scheduler')) {

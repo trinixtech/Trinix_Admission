@@ -99,13 +99,13 @@ async function uploadFile() {
                 v-model="status"
                 label="Status"
                 type="select"
-                :options="[{ value: '', label: 'Any' }, ...['uploaded', 'mapped', 'staging', 'validated', 'writing', 'completed', 'partially_completed', 'failed', 'cancelled'].map((s) => ({ value: s, label: s.replace('_', ' ') }))]"
+                :options="[{ value: '', label: 'Any' }, ...['uploaded', 'mapped', 'staging', 'validated', 'approved', 'writing', 'completed', 'partially_completed', 'failed', 'cancelled'].map((s) => ({ value: s, label: s.replace('_', ' ') }))]"
             />
         </div>
         <ul class="divide-y divide-slate-100 dark:divide-slate-800">
             <li v-for="b in rows" :key="b.uid" class="flex flex-wrap items-center justify-between gap-2 py-3">
                 <div>
-                    <RouterLink :to="`/imports/${b.uid}`" class="btn-link min-h-0">{{ b.original_filename ?? `API push ${b.uid.slice(-6)}` }}</RouterLink>
+                    <RouterLink :to="`/imports/${b.uid}`" class="btn-link">{{ b.original_filename ?? `API push ${b.uid.slice(-6)}` }}</RouterLink>
                     <span class="block text-sm text-slate-600 dark:text-slate-400">
                         {{ b.round?.name }}<template v-if="b.course"> · {{ b.course.code }}</template> · {{ b.counts.total }} rows ·
                         {{ b.uploader?.name ?? 'Portal push' }} · {{ dateTime(b.created_at) }}

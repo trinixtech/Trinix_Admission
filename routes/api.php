@@ -11,6 +11,7 @@ use App\Modules\Cycles\Http\Controllers\AcademicYearController;
 use App\Modules\Cycles\Http\Controllers\AdmissionCycleController;
 use App\Modules\Cycles\Http\Controllers\AdmissionRoundController;
 use App\Modules\Cycles\Http\Controllers\CourseOfferingController;
+use App\Modules\Cycles\Http\Controllers\WorkflowController;
 use App\Modules\Documents\Http\Controllers\DocumentController;
 use App\Modules\Documents\Http\Controllers\DocumentTypeController;
 use App\Modules\Imports\Http\Controllers\ImportBatchController;
@@ -62,6 +63,7 @@ Route::prefix('v1')->group(function () {
         Route::put('branch-courses', [BranchCourseController::class, 'update']);
 
         // Cycles and rounds
+        Route::get('workflow', [WorkflowController::class, 'show']);
         Route::get('academic-years', [AcademicYearController::class, 'index']);
         Route::post('academic-years', [AcademicYearController::class, 'store']);
         Route::patch('academic-years/{academicYear}', [AcademicYearController::class, 'update']);

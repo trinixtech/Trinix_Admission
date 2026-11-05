@@ -23,7 +23,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Automatic panel allocation (Stage A, D26), always previewed before anything is saved:
- *  - candidates: called applicants not yet booked for the stage go to slots of the stage's active panels,
+ *  - candidates: applicants of the round not yet booked for the stage go to slots of the stage's active panels,
  *    by GD/PI centre preference, then city, then any in-person panel, then online; spread evenly;
  *  - faculty: panel members from a pool, spread evenly, without clashes (no chair unless asked).
  * Confirming goes through PanelService, so every clash check and email applies exactly as for manual work.
@@ -51,7 +51,7 @@ class AutoAllocation
         $capacity = $slots->groupBy('interview_panel_id')->map->sum('free')->all();
         $load = $panels->map(fn () => 0)->all();
 
-        $previous = SelectionStage::where(['course_id' => $stage->course_id, 'admission_cycle_id' => $stage->admission_cycle_id])
+        $previous = SelectionStage::where(['course_id' => $stage->course_id, 'admission_cycle_id' => $stage->admission_cycle_id, 'status' => 'active'])
             ->where('sort_order', '<', $stage->sort_order)->orderByDesc('sort_order')->first();
         $previousUsed = $previous && InterviewCandidate::where(['selection_stage_id' => $previous->id, 'admission_round_id' => $round->id])->exists();
 

@@ -37,7 +37,7 @@ class ScheduleImport
     /** The template, with two example rows to overwrite. */
     public function template(int $courseId, int $cycleId): string
     {
-        $stages = SelectionStage::where(['course_id' => $courseId, 'admission_cycle_id' => $cycleId])->orderBy('sort_order')->pluck('code')->all();
+        $stages = SelectionStage::where(['course_id' => $courseId, 'admission_cycle_id' => $cycleId, 'status' => 'active'])->orderBy('sort_order')->pluck('code')->all();
         $loc = Location::orderBy('name')->first();
         $path = tempnam(sys_get_temp_dir(), 'sched');
         $w = new Writer;

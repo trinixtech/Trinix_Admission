@@ -3,6 +3,7 @@ import { ref, watch } from 'vue';
 import CourseCyclePicker from './CourseCyclePicker.vue';
 import Field from './Field.vue';
 import { api } from '@/lib/api';
+import { recall, remember } from '@/lib/options';
 
 /** Course, cycle and round, for screens that work on one course in one round. */
 const model = defineModel<{ course_uid: string; cycle_uid: string; round_uid: string } | null>();
@@ -12,9 +13,13 @@ const roundUid = ref('');
 
 watch(sel, async () => {
     rounds.value = sel.value ? (await api.get(`/admission-cycles/${sel.value.cycle_uid}/rounds`)).data.data : [];
-    roundUid.value = rounds.value.find((r) => r.status === 'active')?.uid ?? rounds.value[0]?.uid ?? '';
+    const kept = recall('pick.round');
+    roundUid.value = rounds.value.some((r) => r.uid === kept) ? kept : (rounds.value.find((r) => r.status === 'active')?.uid ?? rounds.value[0]?.uid ?? '');
 });
-watch([sel, roundUid], () => (model.value = sel.value && roundUid.value ? { ...sel.value, round_uid: roundUid.value } : null));
+watch([sel, roundUid], () => {
+    model.value = sel.value && roundUid.value ? { ...sel.value, round_uid: roundUid.value } : null;
+    if (roundUid.value) remember('pick.round', roundUid.value);
+});
 </script>
 
 <template>

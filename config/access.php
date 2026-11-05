@@ -94,7 +94,7 @@ return [
         ],
         'admission_officer' => [
             'name' => 'Admission Cell Officer',
-            'description' => 'Scrutiny, eligibility, scheduling, offers and admission processing.',
+            'description' => 'Imports, applications, files, the interview schedule and merit lists (running, not approving).',
             'two_factor' => false,
             'permissions' => ['organisation.view', 'cycles.view', 'teams.view', 'imports.view', 'imports.manage', 'applicants.view', 'applicants.edit', 'documents.view', 'documents.manage', 'panels.manage', 'evaluations.view', 'merit.configure', 'merit.manage', 'merit.view'],
         ],

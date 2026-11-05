@@ -10,7 +10,9 @@ use App\Modules\Organisation\Models\Location;
 use App\Modules\Selection\Models\EvaluationScoreHistory;
 use App\Modules\Selection\Models\InterviewCandidate;
 use App\Modules\Selection\Models\InterviewPanel;
+use App\Modules\Selection\Models\SelectionStage;
 use App\Modules\Selection\Services\EvaluationService;
+use App\Modules\Selection\Services\ScheduleImport;
 use App\Modules\Selection\Services\StageFormula;
 use App\Support\Scope;
 use Illuminate\Http\UploadedFile;
@@ -592,4 +594,57 @@ it('imports interview dates, panels, venues, slots and members from the Excel te
     expect($more['panels'][0]['exists'])->toBeTrue();
     $this->postJson("/api/v1/panels/schedule-import/{$more['token']}/confirm")->assertOk()->assertJsonPath('data.panels', 0);
     expect($gdPanel->slots()->count())->toBe(3);
+});
+
+// ----- Admission workflow (dashboard) --------------------------------------------------------
+
+it('shows the workflow step by step with live counts', function () {
+    $q = ['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid, 'round_uid' => $this->round1->uid];
+    $steps = fn () => collect($this->actingAs($this->staff)->getJson('/api/v1/workflow?'.http_build_query($q))->assertOk()->json('data.steps'))->keyBy('key');
+
+    $s = $steps();
+    expect($s['setup']['status'])->toBe('done')
+        ->and($s['faculty']['status'])->toBe('done')
+        ->and($s['students']['status'])->toBe('done')->and($s['students']['candidates'])->toBe(6)
+        ->and($s['files']['status'])->toBe('optional')
+        ->and($s['stages']['status'])->toBe('todo')
+        ->and($s['emails']['status'])->toBe('waiting');
+
+    [$gd, $pi] = stages($this);
+    expect($steps()['stages']['status'])->toBe('attention'); // suggested stages other than GD and PI have no criteria
+    foreach (SelectionStage::whereNotIn('uid', [$gd, $pi])->pluck('uid') as $unused) {
+        $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$unused", ['status' => 'inactive'])->assertOk();
+    }
+    $p = panel($this, $gd, [$this->f1, $this->f2], capacity: 6);
+    $this->actingAs($this->staff)->postJson("/api/v1/interview-slots/{$p['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])->assertCreated();
+
+    $s = $steps();
+    expect($s['stages']['status'])->toBe('done')
+        ->and($s['schedule']['status'])->toBe('attention')
+        ->and(collect($s['schedule']['stages'])->firstWhere('code', 'GD'))->toMatchArray(['panels' => 1, 'scheduled' => 1])
+        ->and($s['emails']['status'])->toBe('attention')
+        ->and($s['marks']['status'])->toBe('todo')
+        ->and($s['merit']['status'])->toBe('todo');
+
+    $this->actingAs($this->staff)->postJson('/api/v1/panels/notify', ['stage_uid' => $gd, 'round_uid' => $this->round1->uid])->assertOk();
+    expect($steps()['emails']['status'])->toBe('done');
+});
+
+it('keeps the workflow to people who can see the course', function () {
+    $q = ['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid, 'round_uid' => $this->round1->uid];
+    $this->actingAs($this->f1)->getJson('/api/v1/workflow?'.http_build_query($q))->assertForbidden();
+    $ipmStaff = userWithRole('admission_staff', new Scope(null, $this->w->ipm->id, $this->w->cycle->id));
+    $this->actingAs($ipmStaff)->getJson('/api/v1/workflow?'.http_build_query($q))->assertNotFound();
+    $this->actingAs($ipmStaff)->getJson('/api/v1/workflow?'.http_build_query(['course_uid' => $this->w->ipm->uid] + $q))->assertOk();
+});
+
+it('leaves switched-off stages out of new panels and the schedule template', function () {
+    [$gd] = stages($this);
+    $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$gd", ['status' => 'inactive'])->assertOk();
+    $this->actingAs($this->staff)->postJson('/api/v1/panels', [
+        'stage_uid' => $gd, 'round_uid' => $this->round1->uid, 'name' => 'P', 'panel_date' => now()->addDays(2)->toDateString(), 'mode' => 'online', 'meeting_link' => 'https://meet.example.org/x',
+    ])->assertUnprocessable()->assertJsonValidationErrors('stage_uid');
+    expect(app(ScheduleImport::class)->template($this->w->mba->id, $this->w->cycle->id))->toBeString();
+    $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$gd", ['status' => 'active'])->assertOk();
+    panel($this, $gd, [$this->f1]);
 });

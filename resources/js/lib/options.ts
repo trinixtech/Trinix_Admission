@@ -36,3 +36,19 @@ export function useScopeOptions() {
 
     return { roles, branches, courses, cycles, load };
 }
+
+/** The last course, cycle and round chosen in this browser (a convenience only; storage may be unavailable). */
+export function recall(key: string): string {
+    try {
+        return localStorage.getItem(key) ?? '';
+    } catch {
+        return '';
+    }
+}
+export function remember(key: string, value: string): void {
+    try {
+        localStorage.setItem(key, value);
+    } catch {
+        /* private window or blocked storage */
+    }
+}

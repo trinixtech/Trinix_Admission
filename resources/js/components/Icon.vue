@@ -25,6 +25,8 @@ const paths: Record<string, string[]> = {
     seat: ['M6 11V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v5', 'M4 11h16v4H4z', 'M6 15v5M18 15v5'],
     wallet: ['M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1V7Z', 'M4 7V6a2 2 0 0 1 2-2h10v3', 'M16 13h4'],
     arrowRight: ['M5 12h14', 'm13 6 6 6-6 6'],
+    check: ['m5 12 5 5L20 7'],
+    alert: ['M12 9v4', 'M12 17h.01', 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'],
 };
 </script>
 

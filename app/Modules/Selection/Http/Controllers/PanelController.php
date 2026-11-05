@@ -46,6 +46,9 @@ class PanelController extends Controller
         $data = $this->validated($request);
         $stage = SelectionStage::where('uid', $data['stage_uid'])->firstOrFail();
         $round = AdmissionRound::where('uid', $data['round_uid'])->firstOrFail();
+        if ($stage->status !== 'active') {
+            $this->fail('stage_uid', 'This stage is switched off. Switch it on under Stages and criteria first.');
+        }
         if ($round->admission_cycle_id !== $stage->admission_cycle_id) {
             $this->fail('round_uid', 'The round belongs to another cycle.');
         }
