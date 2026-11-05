@@ -1,0 +1,79 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Send to PI (mockup)</title><style>
+  :root { --brand: #1f5fa8; --brand-50: #eef4fb; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --bg: #f8fafc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+  header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--line); z-index: 2; }
+  header b { font-size: 17px; }
+  header a { color: var(--brand); font-weight: 500; text-decoration: none; font-size: 15px; }
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .slots { display: flex; gap: 8px; overflow-x: auto; margin: 14px -16px 16px; padding: 0 16px 4px; }
+  .slot { flex: 0 0 auto; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 14px; text-align: left; }
+  .slot b { display: block; font-size: 15px; }
+  .slot.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .slot.done { background: #ecfdf5; border-color: #a7f3d0; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .green { background: #dcfce7; color: #14532d; } .amber { background: #fef3c7; color: #78350f; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .crit { padding: 12px 0; border-top: 1px solid #f1f5f9; }
+  .crit:first-of-type { border-top: 0; }
+  label { font-weight: 600; display: block; }
+  .max { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .mark { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .mark input { width: 96px; min-height: 48px; font-size: 20px; text-align: center; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .mark input.filled { border-color: var(--brand); background: var(--brand-50); }
+  .steps { display: flex; gap: 6px; }
+  .steps button { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; font-size: 15px; }
+  textarea { width: 100%; min-height: 88px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; font: inherit; }
+  .total { font-size: 18px; }
+  .saved { color: #166534; font-size: 14px; font-weight: 600; }
+  .btn { display: block; width: 100%; min-height: 48px; border-radius: 10px; border: 0; font-size: 17px; font-weight: 600; }
+  .primary { background: var(--brand); color: #fff; }
+  .secondary { background: #fff; border: 1px solid #cbd5e1; color: var(--ink); margin-top: 8px; }
+  .link { color: var(--brand); font-weight: 500; text-decoration: none; }
+  .note { background: var(--brand-50); border: 1px solid #d6e4f5; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: #133b69; margin: 12px 0; }
+  .bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--line); padding: 12px 16px; margin: 0 -16px; }
+  @media (min-width: 700px) { .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; } .crit:nth-of-type(2) { border-top: 0; } }
+</style><style>
+  .cand { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:#fff; }
+  .cand.done { border-color:#a7f3d0; background:#f0fdf4; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .chip { min-width:44px; min-height:44px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; font-size:16px; }
+  .chip.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .mini { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px; }
+  .mini label { font-size:14px; font-weight:600; }
+  .mini input { width:100%; min-height:44px; font-size:18px; text-align:center; border:1px solid #cbd5e1; border-radius:10px; }
+  .mini input.filled { border-color:var(--brand); background:var(--brand-50); }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid #f1f5f9; }
+  th { font-size:13px; color:var(--muted); }
+  select { width:100%; min-height:44px; border:1px solid #cbd5e1; border-radius:10px; padding:0 10px; font-size:16px; background:#fff; }
+  .flow { display:flex; align-items:center; gap:6px; font-size:14px; margin:8px 0 0; flex-wrap:wrap; }
+  .flow span { padding:2px 10px; border-radius:999px; background:#e2e8f0; }
+  .flow span.now { background:var(--brand); color:#fff; }
+</style></head><body><header><span aria-hidden='true'>☰</span><b>Trinix Admission</b><a href='#'>Account</a></header><main>
+  <p class="muted" style="margin:0">Panel summary · chair</p>
+  <h1>GD Panel 1 · Group 2</h1>
+  <p class="muted" style="margin:0">All 3 members submitted · results locked 10:32</p>
+  <div class="flow"><span>1 · GD ✓</span><span>›</span><span class="now">2 · send to PI</span></div>
+  <section class="card" style="margin-top:14px">
+    <table>
+      <thead><tr><th><input type="checkbox" checked aria-label="Select all"></th><th>Candidate</th><th>GD avg</th><th>PI</th></tr></thead>
+      <tbody>
+        <tr><td><input type="checkbox" checked></td><td>Saanvi Sharma<br><span class="muted">PRTM0000007</span></td><td><b>16.5</b></td><td><span class="badge amber">to send</span></td></tr>
+        <tr><td><input type="checkbox" checked></td><td>Rohan Iyer<br><span class="muted">PRTM0000011</span></td><td><b>13.0</b> <span class="badge amber" title="One member's total is far from the average">outlier</span></td><td><span class="badge amber">to send</span></td></tr>
+        <tr><td><input type="checkbox" checked></td><td>Meera Nair<br><span class="muted">PRTM0000014</span></td><td><b>15.2</b></td><td><span class="badge amber">to send</span></td></tr>
+        <tr><td><input type="checkbox" disabled></td><td>Kabir Das<br><span class="muted">PRTM0000019</span></td><td>Absent</td><td>—</td></tr>
+        <tr><td><input type="checkbox"></td><td>Diya Reddy<br><span class="muted">PRTM0000021</span></td><td><b>14.0</b></td><td><span class="badge green">PI Panel 3, 12:30</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+  <section class="card">
+    <label for="pp">Send the 3 selected to</label>
+    <select id="pp" style="margin-top:6px"><option>PI Panel 2 · Delhi · Room 204 · next free: 11:30, 12:00, 12:30</option><option>PI Panel 3 · Delhi · Room 206 · next free: 12:00</option><option>PI Panel 5 · Online · next free: 14:00</option></select>
+    <p class="muted" style="margin:8px 0 0">Each gets the next free PI slot on that panel, and an email with the time and room. PI panel members do not see the GD marks.</p>
+  </section>
+  <div class="bar"><button class="btn primary">Send 3 candidates to PI Panel 2</button></div>
+</main></body></html>

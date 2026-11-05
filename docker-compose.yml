@@ -1,0 +1,94 @@
+# Local stack: two app servers behind a load balancer, MySQL 8, Redis, MinIO (S3-compatible) and Mailpit.
+#   docker compose up --build
+# App:      http://localhost:8080   (demo Super Admin from .env.docker: admin@example.test / change-me-please-123)
+# Mail:     http://localhost:8025
+# MinIO:    http://localhost:9001   (admission / admission-secret)
+
+x-app: &app
+  build: .
+  env_file: .env.docker
+  depends_on:
+    mysql: { condition: service_healthy }
+    redis: { condition: service_healthy }
+    minio-init: { condition: service_completed_successfully }
+    clamav: { condition: service_healthy }
+
+services:
+  setup:
+    <<: *app
+    command: sh -c "php artisan migrate --force && php artisan access:sync && php artisan db:seed --class=DemoSeeder --force"
+    restart: "no"
+
+  app1:
+    <<: *app
+    depends_on:
+      setup: { condition: service_completed_successfully }
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:8000/up"], interval: 10s, retries: 5 }
+
+  app2:
+    <<: *app
+    depends_on:
+      setup: { condition: service_completed_successfully }
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://localhost:8000/up"], interval: 10s, retries: 5 }
+
+  worker:
+    <<: *app
+    command: php artisan horizon
+    depends_on:
+      setup: { condition: service_completed_successfully }
+
+  scheduler:
+    <<: *app
+    command: php artisan schedule:work
+    depends_on:
+      setup: { condition: service_completed_successfully }
+
+  lb:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes: ["./docker/nginx-lb.conf:/etc/nginx/conf.d/default.conf:ro"]
+    depends_on: [app1, app2]
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: admission
+      MYSQL_USER: admission
+      MYSQL_PASSWORD: admission
+      MYSQL_ROOT_PASSWORD: root
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci", "--log-bin=mysql-bin", "--binlog-expire-logs-seconds=604800"]
+    volumes: ["mysql:/var/lib/mysql"]
+    healthcheck: { test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot"], interval: 5s, retries: 20 }
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: ["redis:/data"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 20 }
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment: { MINIO_ROOT_USER: admission, MINIO_ROOT_PASSWORD: admission-secret }
+    ports: ["9001:9001"]
+    volumes: ["minio:/data"]
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      sh -c "until mc alias set local http://minio:9000 admission admission-secret; do sleep 1; done;
+             mc mb --ignore-existing local/admission-private && mc anonymous set none local/admission-private"
+
+  clamav:
+    image: clamav/clamav:stable
+    healthcheck: { test: ["CMD", "clamdcheck.sh"], interval: 30s, retries: 20, start_period: 120s }
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports: ["8025:8025"]
+
+volumes:
+  mysql:
+  redis:
+  minio:

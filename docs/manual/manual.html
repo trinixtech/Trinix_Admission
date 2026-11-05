@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Trinix Admission: User Manual</title>
+<style>
+    @page { size: A4; margin: 18mm 16mm 20mm; }
+    :root { --brand: #1f5fa8; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --soft: #f1f5f9; --note: #eef4fb; --warn: #fff7ed; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.55; margin: 0; }
+    h1, h2, h3 { color: var(--ink); line-height: 1.25; }
+    h1 { font-size: 22pt; margin: 0 0 4mm; padding-bottom: 3mm; border-bottom: 2px solid var(--brand); }
+    h2 { font-size: 14pt; margin: 8mm 0 2mm; }
+    h3 { font-size: 11.5pt; margin: 5mm 0 1.5mm; }
+    p { margin: 0 0 2.5mm; }
+    ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+    li { margin-bottom: 1mm; }
+    b, strong { font-weight: 650; }
+    .chapter { page-break-before: always; }
+    .kicker { color: var(--brand); font-weight: 650; font-size: 9pt; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 1mm; }
+    .note, .tip, .warn { border-radius: 6px; padding: 3mm 4mm; margin: 3mm 0 4mm; font-size: 10pt; page-break-inside: avoid; }
+    .note { background: var(--note); border-left: 4px solid var(--brand); }
+    .tip { background: #f0fdf4; border-left: 4px solid #15803d; }
+    .warn { background: var(--warn); border-left: 4px solid #c2410c; }
+    .shot { margin: 3mm 0 4mm; page-break-inside: avoid; }
+    .shot .frame { border: 1px solid var(--line); border-radius: 6px; overflow: hidden; max-height: 150mm; box-shadow: 0 1px 3px rgba(15,23,42,.08); }
+    .shot.tall .frame { max-height: 200mm; }
+    .shot img { display: block; width: 100%; }
+    .shot.phone .frame { width: 70mm; }
+    .phones { display: flex; gap: 8mm; align-items: flex-start; }
+    .phones .shot { flex: 0 0 auto; }
+    .shot figcaption { font-size: 8.5pt; color: var(--muted); margin-top: 1.5mm; }
+    table { width: 100%; border-collapse: collapse; margin: 2mm 0 4mm; font-size: 9.5pt; page-break-inside: auto; }
+    th { background: var(--soft); text-align: left; font-weight: 650; }
+    th, td { border: 1px solid var(--line); padding: 1.8mm 2.5mm; vertical-align: top; }
+    tr { page-break-inside: avoid; }
+    .steps { counter-reset: s; list-style: none; padding-left: 0; }
+    .steps > li { counter-increment: s; position: relative; padding-left: 9mm; margin-bottom: 2mm; }
+    .steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 6mm; height: 6mm; border-radius: 50%; background: var(--brand); color: #fff; font-size: 8.5pt; font-weight: 700; text-align: center; line-height: 6mm; }
+    .ui { font-weight: 650; color: var(--brand); }
+    .path { font-family: ui-monospace, Consolas, monospace; font-size: 9pt; background: var(--soft); padding: 0 1.2mm; border-radius: 3px; }
+    /* Cover */
+    .cover { height: 255mm; display: flex; flex-direction: column; justify-content: space-between; padding: 10mm 4mm; }
+    .cover .mark { width: 22mm; height: 22mm; border-radius: 5mm; background: var(--brand); color: #fff; font-weight: 800; font-size: 20pt; display: flex; align-items: center; justify-content: center; }
+    .cover h1 { border: 0; font-size: 34pt; margin: 8mm 0 2mm; }
+    .cover .sub { font-size: 15pt; color: var(--muted); }
+    .cover .band { background: #0f172a; color: #e2e8f0; border-radius: 8px; padding: 8mm; }
+    .cover .band b { color: #fff; }
+    .meta { font-size: 10pt; color: var(--muted); }
+    /* Contents */
+    .toc ol { list-style: none; padding: 0; columns: 2; column-gap: 10mm; }
+    .toc li { break-inside: avoid; margin-bottom: 2mm; }
+    .toc li span { color: var(--muted); font-size: 9pt; display: block; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+</style>
+</head>
+<body>
+
+<!-- ======================= COVER ======================= -->
+<section class="cover">
+    <div>
+        <div class="mark">TA</div>
+        <h1>Trinix Admission</h1>
+        <p class="sub">User Manual: Centralised Admission Management System</p>
+        <p class="meta">For admission staff, committee members, faculty (panel members) and system administrators<br>Version 0.8 · November 2026</p>
+    </div>
+    <div class="band">
+        <p><b>One application for every campus, course and round.</b> Trinix Admission brings shortlisted applicants in from the admission portal and manages everything after that: document scrutiny, eligibility, GD/PI scheduling and live marking, and merit lists.</p>
+        <p style="margin:0">Applicants never sign in. Staff record every response, and the system sends all notices to applicants by email.</p>
+    </div>
+    <p class="meta">The screens in this manual show sample data from a test system. Names, numbers and marks in them are not real, and the formulas and cut-offs shown are test values, not IIFT's rules.</p>
+</section>
+
+<!-- ======================= CONTENTS ======================= -->
+<section class="chapter toc">
+    <h1>Contents</h1>
+    <ol>
+        <li><b>1. Introduction</b><span>What the system does, who uses it, the admission workflow</span></li>
+        <li><b>2. Getting started</b><span>Signing in, two-factor sign-in, the screen layout, your account</span></li>
+        <li><b>3. Setup</b><span>Institution, campuses, locations, courses, cycles and rounds</span></li>
+        <li><b>4. People</b><span>Users, importing faculty, roles and permissions, teams</span></li>
+        <li><b>5. Applicants and imports</b><span>Sources, importing portal files, applications</span></li>
+        <li><b>6. Documents, scrutiny and eligibility</b><span>Document setup, checking files, scrutiny checklists, deficiency emails, eligibility decisions</span></li>
+        <li><b>7. Selection (GD/PI)</b><span>Stages and marks, call lists, panels, automatic allocation, contact log</span></li>
+        <li><b>8. Marking interviews (for panel members)</b><span>My interviews on a phone or tablet, submitting, locking results</span></li>
+        <li><b>9. Merit</b><span>Merit formula, running, approving and publishing merit lists, exports</span></li>
+        <li><b>10. Seats and offers</b><span>Categories, reservation rules, seats, allocation, offers, payments, waitlist, moving up</span></li>
+        <li><b>11. Admission and accounts</b><span>Fee structure, refund policy, confirming admissions, fees and payments, withdrawals and refunds, bank statements, reports</span></li>
+        <li><b>12. System administration</b><span>Installation, updates, health, settings, audit log</span></li>
+        <li><b>13. Roles at a glance</b><span>Who can do what</span></li>
+        <li><b>14. Questions and troubleshooting</b><span>Common questions, terms used</span></li>
+    </ol>
+</section>
+
+<!-- ======================= 1. INTRODUCTION ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 1</div>
+    <h1>Introduction</h1>
+    <p>Trinix Admission is the admission office's system for everything that happens <b>after</b> applicants apply on the institute's admission portal. It is one installation and one database for all campuses (Delhi, Kolkata, Kakinada, GIFT City) and all courses (MBA (IB), MBA (BA), IPM and others).</p>
+
+    <h2>The admission workflow</h2>
+    <ol class="steps">
+        <li><b>Setup:</b> the institution, campuses, courses, which campus offers which course, the admission cycle with seats, and the rounds with dates for each campus.</li>
+        <li><b>Import:</b> the shortlisted applicants of a round are imported from the portal's Excel/CSV export (or sent by the portal through its API), checked, previewed and approved by a second person.</li>
+        <li><b>Documents and scrutiny:</b> documents arrive as a ZIP file or as links. Staff verify each one, work through the course's checklist, email applicants about anything missing, and decide eligibility.</li>
+        <li><b>Call lists:</b> IIFT's cut-offs, set for each category, decide who is called for GD/PI. A second person publishes the list, and called applicants are emailed.</li>
+        <li><b>GD/PI:</b> panels are created in many cities or online, faculty and candidates are assigned (automatically, with changes by hand), and schedules and reminders are emailed.</li>
+        <li><b>Live marking:</b> panel members mark on their phones or tablets. Marks save automatically, results are combined by the stage's formula and then locked, and GD candidates are sent on to PI panels.</li>
+        <li><b>Merit:</b> the merit formula turns each candidate's data into a total and a rank. A second person approves and publishes the list, which can be exported to Excel or PDF.</li>
+    </ol>
+    <div class="note">Seat allocation with reservation, offers and waitlists, fees and refunds are later phases. They are not in this version.</div>
+
+    <h2>Principles you will notice</h2>
+    <ul>
+        <li><b>Nothing is saved without a check.</b> Imports, call lists, automatic allocations and merit lists are always shown as a preview first.</li>
+        <li><b>Two people for important steps.</b> The person who uploads an import, runs a call list or runs a merit list cannot approve or publish it.</li>
+        <li><b>Everything is recorded.</b> Every change is written to the audit log with who, when, what changed and why.</li>
+        <li><b>Rules are entered by the institute.</b> Eligibility rules, cut-offs, marking criteria and the merit formula are never built into the software; authorised staff enter them and approve them with a source.</li>
+        <li><b>You see only your scope.</b> Each person sees only the campuses, courses and cycles their role covers. Panel members see only their own candidates.</li>
+        <li><b>Email only.</b> All notices to applicants go by email; there is no SMS. Applicants reply by phone or email, and staff record the reply.</li>
+    </ul>
+</section>
+
+<!-- ======================= 2. GETTING STARTED ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 2</div>
+    <h1>Getting started</h1>
+
+    <h2>Your account</h2>
+    <p>You receive an <b>invitation email</b> from the system. Open the link, choose a password (at least 12 characters), and sign in with your email address and that password. Invitations expire after a few days; if yours has expired, ask your administrator to resend it.</p>
+
+    <h2>Signing in</h2>
+    <div class="grid2">
+        <figure class="shot"><div class="frame"><img src="img/login.jpg" alt="Sign-in page"></div><figcaption>The sign-in page</figcaption></figure>
+        <figure class="shot"><div class="frame"><img src="img/login-code.jpg" alt="Two-factor code"></div><figcaption>The two-factor code step</figcaption></figure>
+    </div>
+
+    <h3>Two-factor sign-in</h3>
+    <p>Administrators (Super Admin, IT Administrator, Central Admission Administrator, Branch Administrator, Accounts Officer) must use <b>two-factor sign-in</b>. At your first sign-in you are taken to <span class="ui">Account</span> to set it up:</p>
+    <ol class="steps">
+        <li>Install an authenticator app on your phone (for example Google Authenticator or Microsoft Authenticator).</li>
+        <li>Click <span class="ui">Set up two-factor</span>, confirm your password, and scan the QR code with the app.</li>
+        <li>Type the 6-digit code the app shows, click <span class="ui">Turn on</span>, and <b>save the recovery codes</b> somewhere safe. Each one lets you sign in once if you lose your phone.</li>
+    </ol>
+    <p>After that, each sign-in asks for your password and then the current 6-digit code.</p>
+    <div class="tip">Forgot your password? Use <span class="ui">Forgot password?</span> on the sign-in page; a reset link is emailed to you. After several wrong passwords the account locks for a short time; an IT Administrator can unlock it.</div>
+
+    <h2>The screen layout</h2>
+    <figure class="shot"><div class="frame"><img src="img/dashboard.jpg" alt="Dashboard"></div><figcaption>The dashboard, with the sidebar menu on the left and the top bar</figcaption></figure>
+    <ul>
+        <li><b>Sidebar menu (left):</b> the modules in the order of the admission work. Click a group (for example <span class="ui">Selection (GD/PI)</span>) to open its sub-menu; the page you are on is highlighted. You see only the items your role allows.</li>
+        <li><b>Collapse sidebar:</b> at the bottom of the sidebar on a computer, this shows icons only to give more room. Click any icon to open the menu again.</li>
+        <li><b>Top bar:</b> shows where you are (for example <i>Home › Selection (GD/PI) › Interview panels</i>). Click a part of the path to go back to it.</li>
+        <li><b>Your name (top right):</b> opens the account menu, with Account and security, the <b>theme</b> (Light, Dark or Device, which follows your phone or computer) and <b>Sign out</b>.</li>
+        <li><b>Dashboard:</b> shortcut cards for each module you can use, your roles, and the admission cycles in progress.</li>
+    </ul>
+    <div class="grid2">
+        <figure class="shot"><div class="frame"><img src="img/user-menu.jpg" alt="Account menu"></div><figcaption>The account menu with the theme switch</figcaption></figure>
+        <figure class="shot"><div class="frame"><img src="img/dashboard-dark.jpg" alt="Dark theme"></div><figcaption>The dark theme</figcaption></figure>
+    </div>
+
+    <h3>On a phone or tablet</h3>
+    <p>Everything works on a phone. Tap the <b>menu button</b> (three lines, top left) to open the menu; tap outside it or the × to close it. Tables can be swiped sideways.</p>
+    <div class="phones">
+        <figure class="shot phone"><div class="frame"><img src="img/phone-dashboard.jpg" alt="Phone dashboard"></div><figcaption>Dashboard on a phone</figcaption></figure>
+        <figure class="shot phone"><div class="frame"><img src="img/phone-menu.jpg" alt="Phone menu"></div><figcaption>The menu on a phone</figcaption></figure>
+    </div>
+
+    <h2>Account and security</h2>
+    <p><span class="ui">Account</span> shows your roles and lets you change your password, turn two-factor sign-in on or off (where your role allows it), and see new recovery codes. You are signed out automatically after a period of inactivity.</p>
+</section>
+
+<!-- ======================= 3. SETUP ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 3 · Menu: Setup</div>
+    <h1>Setup</h1>
+    <p>Setup is done once, by a Super Admin or Central Admission Administrator, and updated each year. Do it in this order.</p>
+
+    <h2>Institution, branches (campuses) and locations</h2>
+    <ul>
+        <li><span class="ui">Institution</span>: the institute's name and details, used in emails.</li>
+        <li><span class="ui">Branches (campuses)</span>: one record per campus, e.g. Delhi, Kolkata, Kakinada, GIFT City. The <b>code</b> (e.g. DEL, KOL) is what portal files use for campus preferences, so choose it carefully. It cannot change once in use.</li>
+        <li><span class="ui">Locations</span>: addresses where things happen, for example campuses and interview centres in other cities. GD/PI panels are held at a location (or online).</li>
+    </ul>
+    <figure class="shot"><div class="frame"><img src="img/branches.jpg" alt="Branches"></div><figcaption>Branches (campuses)</figcaption></figure>
+
+    <h2>Courses and the branch–course grid</h2>
+    <p><span class="ui">Courses</span> lists each programme (e.g. MBA-IB, MBA-BA, IPM) with its level, duration and entrance exam (CAT or IPMAT). The <span class="ui">Branch–course grid</span> says which campus offers which course: tick the boxes and save.</p>
+    <figure class="shot"><div class="frame"><img src="img/branch-course-grid.jpg" alt="Branch-course grid"></div><figcaption>Which campus offers which course</figcaption></figure>
+
+    <h2>Academic years and admission cycles</h2>
+    <ol class="steps">
+        <li><span class="ui">Academic years</span>: add the year, e.g. <b>2027-28</b> with its start and end dates.</li>
+        <li><span class="ui">Cycles and rounds</span> → <span class="ui">Add cycle</span>: the admission cycle for that year, e.g. <i>Admissions 2027</i>.</li>
+        <li>Open the cycle and use <span class="ui">Add offering</span> for each campus and course it admits to, with the <b>sanctioned intake (seats)</b>, e.g. MBA (IB) Delhi 240.</li>
+        <li>Click <span class="ui">Open cycle</span> when it is ready.</li>
+    </ol>
+    <figure class="shot"><div class="frame"><img src="img/cycle-detail.jpg" alt="Cycle detail"></div><figcaption>A cycle with its offerings (seats) and rounds</figcaption></figure>
+
+    <h2>Rounds and campus-wise dates</h2>
+    <p>Applicants are imported <b>round by round</b> (Round 1, Round 2, …). In the cycle, click <span class="ui">Create first round</span> (later: <span class="ui">Add round</span>), then on the round page:</p>
+    <ol class="steps">
+        <li>Tick each campus and course in the round and give its <b>start and end dates</b>. Dates can differ by campus.</li>
+        <li>Click <span class="ui">Save offerings and dates</span>, then <span class="ui">Activate</span>.</li>
+        <li>When the round is over, click <span class="ui">Close round</span> and give a reason. A closed round is read-only; <span class="ui">Reopen</span> needs a reason and is recorded.</li>
+    </ol>
+    <div class="note">Rounds may <b>start before</b> the academic year, because admissions run ahead of it (e.g. from December 2026 for 2027-28), but must <b>end by</b> the year's end. Two rounds of the same campus and course cannot overlap.</div>
+    <figure class="shot"><div class="frame"><img src="img/round-detail.jpg" alt="Round dates"></div><figcaption>Campus-wise dates of a round</figcaption></figure>
+</section>
+
+<!-- ======================= 4. PEOPLE ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 4 · Menu: People</div>
+    <h1>People</h1>
+
+    <h2>Users and invitations</h2>
+    <p><span class="ui">Users</span> lists everyone who can sign in. <span class="ui">Invite user</span> creates an account and emails an invitation. Give each person a <b>role</b> and, if needed, a <b>scope</b>: a campus, a course and/or a cycle. Leave a box empty for "all".</p>
+    <figure class="shot"><div class="frame"><img src="img/invite-user.jpg" alt="Invite user"></div><figcaption>Inviting a user with a role and scope</figcaption></figure>
+    <ul>
+        <li>A person can hold several roles. Open the user and use <span class="ui">Add role</span>.</li>
+        <li>Roles are removed (revoked) with a reason; the history is kept.</li>
+        <li>Nobody can give a role or scope wider than their own, or change their own roles.</li>
+        <li><b>Suspend</b> stops someone signing in, with a reason; <b>Reactivate</b> restores access.</li>
+    </ul>
+
+    <h2>Importing faculty and panel members</h2>
+    <p>To add many faculty at once, use <span class="ui">Users</span> → <span class="ui">Import faculty</span>:</p>
+    <ol class="steps">
+        <li>Prepare an Excel or CSV file with the columns <b>Name</b> and <b>Email</b>, and optionally <b>Mobile</b>, <b>Designation</b>, <b>Department</b>, <b>Campus</b> (branch code, e.g. DEL) and <b>Role</b>: Faculty / Panel Member, Committee Member or Committee Chairperson, with several separated by ";".</li>
+        <li>Choose the file. Tick <b>Also give the Committee Member role</b> if panel members are also committee members.</li>
+        <li>Click <span class="ui">Check the file</span>. Each row shows whether the person is new, existing (gets the roles) or unchanged, or has an error such as a bad email, an unknown campus or a duplicate.</li>
+        <li>Click <span class="ui">Confirm and send invitations</span>. New people get an invitation email. Existing people only gain roles; nothing is ever removed.</li>
+    </ol>
+    <figure class="shot"><div class="frame"><img src="img/import-faculty.jpg" alt="Import faculty"></div><figcaption>Import faculty</figcaption></figure>
+
+    <h2>Roles and permissions, teams</h2>
+    <p><span class="ui">Roles and permissions</span> shows what each role may do (see Chapter 13). Only the Super Admin can change a role's permissions. <span class="ui">Teams</span> holds committees, admission cells and accounts teams, with their members and history.</p>
+</section>
+
+<!-- ======================= 5. APPLICANTS ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 5 · Menu: Applicants</div>
+    <h1>Applicants and imports</h1>
+
+    <h2>Sources</h2>
+    <p>A <b>source</b> is where applicant data comes from, normally the <i>Admission portal</i>. In <span class="ui">Sources</span> (Super Admin), add the source and, if the portal will send data through the API, create a <b>source token</b>. It is shown once only; give it to the portal's technical team.</p>
+
+    <h2>Importing a portal file</h2>
+    <p>Only the <b>shortlisted applicants of a round</b> are imported. Every import goes through the same checks, and nothing reaches the applicant records until a second person approves it.</p>
+    <ol class="steps">
+        <li><span class="ui">Imports</span> → <span class="ui">New import</span>: choose the source, the <b>round</b>, the course (or "All courses in the file"), and the Excel/CSV file. Click <span class="ui">Upload</span>.</li>
+        <li><b>Match the columns</b>: for each field (application number, name, CAT number, percentile, category, marks, campus preferences, GD/PI centre preferences, …) pick the column in the file. Add <b>value translations</b> where the portal uses different words, e.g. "General" → GEN or "OBC" → OBC-NCL. <span class="ui">Save as template</span> so next time it is filled in for you.</li>
+        <li>Click <span class="ui">Check the rows</span>. The batch shows <b>New</b>, <b>Updates</b> (changes to applicants already imported), <b>Unchanged</b>, <b>Duplicates</b> and <b>Errors</b>, row by row. You can exclude rows, with a reason.</li>
+        <li>A <b>different person</b> with approval rights opens the batch and clicks <span class="ui">Approve and write</span>. The batch then says "Every row is accounted for".</li>
+    </ol>
+    <figure class="shot"><div class="frame"><img src="img/new-import.jpg" alt="New import"></div><figcaption>Starting a new import for a round</figcaption></figure>
+    <figure class="shot tall"><div class="frame"><img src="img/import-batch.jpg" alt="Import batch"></div><figcaption>An import batch: counts and the preview of every row</figcaption></figure>
+    <div class="note"><b>Duplicates and updates.</b> An applicant is identified by <i>source + portal application number + course + cycle</i>. A later round's file adds new applicants and shows changes to existing ones as updates. Empty cells never erase stored data, and a field already verified in scrutiny is never overwritten: the change goes to <span class="ui">Field reviews</span> instead. A student who applied to two MBA courses has two application numbers and two separate records.</div>
+
+    <h2>Applications</h2>
+    <p><span class="ui">Applications</span> lists applicants in your scope. Search by application number, CAT/IPMAT number or name, and filter by course, round or status. Open an application to see its tabs:</p>
+    <figure class="shot tall"><div class="frame"><img src="img/application.jpg" alt="Application"></div><figcaption>An application: details tab</figcaption></figure>
+    <table>
+        <tr><th>Tab</th><th>What it holds</th></tr>
+        <tr><td>Details</td><td>Personal and contact details, entrance scores, academics, campus preferences, GD/PI centre preferences, rounds, status history, corrections</td></tr>
+        <tr><td>Documents</td><td>Each document type with its versions, scan status and verification (Chapter 6)</td></tr>
+        <tr><td>Scrutiny</td><td>The course's checklist and its progress (Chapter 6)</td></tr>
+        <tr><td>Eligibility</td><td>The evaluation against the approved rules, and the decision (Chapter 6)</td></tr>
+        <tr><td>Contact</td><td>Calls and emails with the applicant, interviews, follow-ups (Chapter 7)</td></tr>
+        <tr><td>Merit</td><td>The applicant's place in published merit lists (Chapter 9)</td></tr>
+    </table>
+    <p><span class="ui">Correct a field</span> changes a value with a <b>reason</b>; the old and new values are kept. If the same CAT number appears on another application you can see, a note shows it (the records are never merged).</p>
+</section>
+
+<!-- ======================= 6. SCRUTINY ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 6 · Menu: Scrutiny</div>
+    <h1>Documents, scrutiny and eligibility</h1>
+
+    <h2>Setting up documents and checklists</h2>
+    <p><span class="ui">Documents and checklists</span> (choose the course and cycle):</p>
+    <ul>
+        <li><b>Document types</b>: e.g. Class 10 and 12 marksheets, graduation marksheets, category certificate, CAT/IPMAT scorecard, photo identity. Use <span class="ui">Add suggested</span> for a starting list, then edit it.</li>
+        <li><b>Requirements</b>: which documents each course needs, and which are optional.</li>
+        <li><b>Scrutiny checklist</b>: the checks staff do for each application. These are document checks ("Class 10 marksheet verified") and field checks ("Date of birth matches the Class 10 marksheet"). Start with <span class="ui">New from suggestions</span>, edit it, then <span class="ui">Activate</span>. Changes later make a new version.</li>
+    </ul>
+    <figure class="shot"><div class="frame"><img src="img/documents-setup.jpg" alt="Documents setup"></div><figcaption>Documents and checklists for a course</figcaption></figure>
+
+    <h2>Bringing documents in</h2>
+    <p><span class="ui">Imports</span> → <span class="ui">Import documents</span>: upload a <b>ZIP file</b> whose files are named by application number and document, or a list of <b>links</b> from the portal. Staff can also upload a file on the application's Documents tab. Every file is checked for type and size, kept as a new version, and <b>virus-scanned</b>. A file that fails the scan is quarantined and never opened.</p>
+    <div class="note">Documents are private. Opening one creates a link valid for 5 minutes for you only, and every opening is recorded.</div>
+
+    <h2>Doing scrutiny</h2>
+    <ol class="steps">
+        <li>Find the application in the <span class="ui">Scrutiny queue</span> (a Central Admin can assign applications to officers), or open it from <span class="ui">Applications</span>.</li>
+        <li>On the <b>Scrutiny</b> tab click <span class="ui">Start scrutiny</span>.</li>
+        <li>On the <b>Documents</b> tab, open each file and click <span class="ui">Verify</span>, or <span class="ui">Reject</span> with a reason.</li>
+        <li>On the <b>Scrutiny</b> tab, mark each check <span class="ui">Met</span>, <span class="ui">Not met</span> or <span class="ui">Not applicable</span>. A field check marked Met <b>locks</b> that field, so a later import cannot change it silently.</li>
+        <li>Click <span class="ui">Mark complete</span> when all checks are done. If something is missing, click <span class="ui">Mark deficient</span>.</li>
+    </ol>
+    <figure class="shot tall"><div class="frame"><img src="img/application-scrutiny.jpg" alt="Scrutiny tab"></div><figcaption>The scrutiny checklist of an application</figcaption></figure>
+
+    <h3>Deficiency emails</h3>
+    <p>After <span class="ui">Mark deficient</span>, the system drafts an email listing what is missing, with a <b>reply-by date</b> (7 days by default, changeable). Click <span class="ui">Review and send</span>, check the text and send it. When the applicant replies, attach what they sent, and the scrutiny continues.</p>
+
+    <h3>Field reviews</h3>
+    <p>When a later import brings a different value for a field that is already verified, the change waits in <span class="ui">Field reviews</span>. Accept it or keep the old value, with a reason.</p>
+
+    <h2>Eligibility</h2>
+    <p><span class="ui">Eligibility rules</span> (per course and cycle): enter IIFT's minimums, for example graduation marks of at least 50%, with <b>relaxations</b> for categories or PwBD (e.g. 45% for SC/ST/PwD). Suggested rules can be loaded as a draft. A rule set is used only after it is <b>approved</b> with a <b>source reference</b> (e.g. "Prospectus 2027, section 4").</p>
+    <figure class="shot"><div class="frame"><img src="img/eligibility-rules.jpg" alt="Eligibility rules"></div><figcaption>Eligibility rules with category relaxations</figcaption></figure>
+    <p>On an application's <b>Eligibility</b> tab, the system shows how the applicant measures against each rule. A rule on a field not yet verified shows "incomplete". Record the decision: <b>Eligible</b>, <b>Provisional</b> (with a condition, e.g. final marks due), or <b>Not eligible</b> (with a reason).</p>
+    <div class="warn"><b>"Not eligible" needs a second person.</b> It stays pending until a Committee Chairperson or Central Admin confirms it under <span class="ui">Not eligible to confirm</span>.</div>
+</section>
+
+<!-- ======================= 7. SELECTION ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 7 · Menu: Selection (GD/PI)</div>
+    <h1>Selection (GD/PI)</h1>
+
+    <h2>Stages and criteria (each cycle)</h2>
+    <p><span class="ui">Stages and criteria</span> (choose the course and cycle) defines the selection stages, e.g. <b>WAT, GD, PI</b> for MBA and <b>WAT, PI</b> for IPM. For each stage the admin sets:</p>
+    <ul>
+        <li><b>Criteria and maximum marks</b>, e.g. Content 10 and Communication 10. These are set for every cycle; <span class="ui">Copy stages and criteria</span> brings last cycle's set in to edit. Once marks are entered, the criteria can no longer change.</li>
+        <li><b>Remarks required</b>: always, never, or only when the total is below a value.</li>
+        <li><b>Stage result from panel members' totals</b>: the formula combining the members' marks. Use <span class="path">AVG</span> (average), <span class="path">MEDIAN</span>, or a formula such as <span class="path">(SUM - MAX - MIN) / (COUNT - 2)</span>, which drops the highest and lowest marks. <b>Members needed for this formula</b>: with fewer members marking, the plain average is used. The formula cannot change once any result in the stage is locked.</li>
+        <li><b>Flag a member's total this far from the average</b> (optional): highlights unusual marks.</li>
+        <li>For a later stage (e.g. PI): <b>Panel sees marks from earlier stages</b>, and <b>Minimum GD average to be sent here</b> (optional).</li>
+    </ul>
+    <figure class="shot tall"><div class="frame"><img src="img/stages.jpg" alt="Stages"></div><figcaption>Stages, criteria and settings</figcaption></figure>
+
+    <h2>Call lists: who is called for GD/PI</h2>
+    <div class="note">IIFT shortlists before importing, so by default <b>every candidate imported for a round is called</b> (the round's setting "Candidates imported for this round are called", on the round page). A call list is then only a <b>cross-check</b>: it flags imported candidates below the cut-offs and sends no emails. Untick the setting to let the published call list decide who is called.</div>
+    <ol class="steps">
+        <li><span class="ui">Call lists</span> → choose course, cycle and round → <span class="ui">Enter cut-offs</span> (or <span class="ui">New version</span>).</li>
+        <li><span class="ui">+ Add cut-off</span>: e.g. CAT percentile ≥ a value <b>for each category</b> (GEN, EWS, OBC-NCL, SC, ST, PwBD). A PwBD applicant is called if they meet either their category's value or the PwBD value.</li>
+        <li>Give the <b>source</b> (IIFT policy or committee decision). A Committee Chairperson or Central Admin clicks <span class="ui">Approve</span>.</li>
+        <li><span class="ui">Run the cut-offs</span>: every applicant of the round is shown as called or not called, with the reason. You can change individual applicants, with a reason.</li>
+        <li>A <b>different person</b> clicks <span class="ui">Publish and email the called</span>. Each called applicant gets an email.</li>
+    </ol>
+    <figure class="shot tall"><div class="frame"><img src="img/call-lists.jpg" alt="Call lists"></div><figcaption>Cut-offs per category and the resulting call list</figcaption></figure>
+
+    <h2>Interview panels</h2>
+    <p><span class="ui">Interview panels</span> → <span class="ui">New panel</span>: the stage, round, name, date, and <b>in person</b> (location and room, in any city) or <b>online</b> (meeting link). On the panel page:</p>
+    <ul>
+        <li><b>Members</b>: search for faculty or committee members and add them. A chair is optional.</li>
+        <li><b>Slots</b>: start and end time (IST) and how many candidates. Use 8–10 for a GD group, or 1 for a PI. <b>How many back to back</b> makes a series of slots at once.</li>
+        <li><span class="ui">Schedule an applicant</span> books one called applicant into a slot. <span class="ui">Fill and email</span> fills the free places, optionally only with applicants from one city.</li>
+    </ul>
+    <figure class="shot"><div class="frame"><img src="img/panel-detail.jpg" alt="Panel"></div><figcaption>A GD panel: members, slots and candidates</figcaption></figure>
+
+    <h3>Automatic allocation, with changes by hand</h3>
+    <p>On <span class="ui">Interview panels</span>, two buttons do the allocation for a whole stage. Both show a <b>preview</b>, and nothing is saved or emailed until you confirm.</p>
+    <ul>
+        <li><span class="ui">Allocate candidates automatically</span>: called applicants not yet scheduled for the stage are spread over the stage's panels. The order is the applicant's <b>GD/PI centre preference</b> 1, 2, 3, then their <b>city</b>, then any other in-person centre, then online. Everyone who can get their first choice is placed before anyone gets a second choice, and panels are filled evenly. For PI, only applicants whose GD result is locked are placed, in a slot after their GD.</li>
+        <li><b>Slot order:</b> in <span class="ui">Stages and criteria</span>, each stage has up to three keys (name, gender, date of birth, application number, each ascending or descending) that decide the order in which candidates fill the slots after their centre preference.</li>
+        <li><b>Different panel for PI:</b> if a PI panel has a member who already marked the candidate in GD, a warning names them. It does not block; move the candidate if needed.</li>
+        <li><span class="ui">Assign faculty automatically</span>: fills panels with the number of members you choose from the people who can mark, optionally only from one campus. Work is spread evenly and nobody is on two panels at the same time.</li>
+    </ul>
+    <div class="grid2">
+        <figure class="shot"><div class="frame"><img src="img/auto-allocate.jpg" alt="Automatic allocation"></div><figcaption>Allocate candidates automatically</figcaption></figure>
+        <figure class="shot"><div class="frame"><img src="img/auto-faculty.jpg" alt="Assign faculty"></div><figcaption>Assign faculty automatically</figcaption></figure>
+    </div>
+    <p><b>Changes by hand</b> on the panel page: <span class="ui">Move</span> a candidate to another slot, <span class="ui">Swap</span> two candidates (on any panels of the same stage), or <span class="ui">Cancel</span>. Each needs a reason, and moved applicants are emailed the new time. A <b>reminder email</b> goes to every applicant the day before their interview.</p>
+    <div class="note">The system refuses clashes: an applicant in two overlapping slots or twice in a stage, a full slot, a member on two panels at once, or a member who has declared a <b>conflict of interest</b> with the applicant.</div>
+
+    <h2>Results and sending candidates on to PI</h2>
+    <p>The panel's <span class="ui">Results</span> tab shows each candidate's marks from every member, the stage result and any unusual marks. When everyone has submitted, the result is <span class="ui">Lock</span>ed. Locked GD candidates can be <b>sent on</b> to a PI panel: tick them, choose the panel, and each gets the next free slot after their GD, with an email.</p>
+    <figure class="shot"><div class="frame"><img src="img/panel-results.jpg" alt="Results"></div><figcaption>Panel results and sending on to PI</figcaption></figure>
+
+    <h2>Applicant contact and follow-ups</h2>
+    <p>The <b>Contact</b> tab of an application records every call or email: how (call made or received, email sent or received), the outcome (reached, no answer, confirmed attendance, asked to reschedule, …), a note, and an optional <b>follow-up date</b>. From the same form you can <b>schedule</b> or <b>move</b> the interview, which emails the applicant. <span class="ui">Follow-ups</span> lists what is due today or earlier; click <span class="ui">Mark done</span> when finished.</p>
+    <figure class="shot"><div class="frame"><img src="img/application-contact.jpg" alt="Contact"></div><figcaption>The Contact tab of an application</figcaption></figure>
+</section>
+
+<!-- ======================= 8. MARKING ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 8 · For panel members · Menu: My interviews</div>
+    <h1>Marking interviews</h1>
+    <p>Panel members mark on their own <b>phone or tablet</b> during the GD or PI. An internet connection is needed; marks are saved as you type.</p>
+    <ol class="steps">
+        <li>Sign in and open <span class="ui">My interviews</span>. Choose the <b>date</b> if it is not today.</li>
+        <li>Your panel, venue (or meeting link) and the <b>time slots</b> are shown. Tap a slot.</li>
+        <li>When a candidate arrives, tap <span class="ui">Present</span> (or <span class="ui">Absent</span>). On a panel without a chair, any member can do this.</li>
+        <li>Enter the marks for each criterion. In a <b>GD</b> slot you see the whole group, one card per candidate. In a <b>PI</b> slot you see one candidate, with − and + buttons that change the marks in steps of 0.5. "✓ Saved" shows that your marks are stored.</li>
+        <li>Add <b>remarks</b> where the stage requires them.</li>
+        <li>Tap <span class="ui">Submit marks</span> (PI) or <span class="ui">Submit marks for this group</span> (GD). Submitted marks are locked.</li>
+    </ol>
+    <div class="phones">
+        <figure class="shot phone tall"><div class="frame"><img src="img/phone-my-interviews.jpg" alt="GD marking"></div><figcaption>A GD slot on a phone</figcaption></figure>
+        <figure class="shot phone tall"><div class="frame"><img src="img/phone-pi-marking.jpg" alt="PI marking"></div><figcaption>A PI slot, showing the GD result</figcaption></figure>
+    </div>
+    <ul>
+        <li>You see <b>other members' marks only after you submit your own</b>.</li>
+        <li>Made a mistake after submitting? The panel chair or a Central Admin can <b>reopen</b> your marks, with a reason; the earlier marks are kept in the history.</li>
+        <li>If you know a candidate personally, tap <span class="ui">Declare a conflict of interest</span> before marking. You will not mark that candidate, and the office can move them.</li>
+        <li>The <span class="ui">application</span> link opens the candidate's full application and documents, for your own candidates only. Each opening is recorded.</li>
+    </ul>
+</section>
+
+<!-- ======================= 9. MERIT ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 9 · Menu: Merit</div>
+    <h1>Merit</h1>
+
+    <h2>The merit formula</h2>
+    <p><span class="ui">Merit formula</span> (choose the course and cycle) holds IIFT's formula as a <b>weighted sum of components</b>. <span class="ui">Start a formula</span> (or <span class="ui">New version</span>), then add each component:</p>
+    <table>
+        <tr><th>Setting</th><th>Meaning</th></tr>
+        <tr><td>Reads</td><td>The value used: entrance percentile or score, a sectional score, academic marks (%), work experience (months), a selection stage result (WAT/GD/PI), or an applicant field with a points table</td></tr>
+        <tr><td>How</td><td><b>Scale to weight</b> (value ÷ highest possible value × weight), <b>Ranges → points</b> (e.g. months of experience to points), <b>Value → points</b>, or <b>As is × weight</b></td></tr>
+        <tr><td>Weight, cap</td><td>Points at the highest value (or a multiplier), and an optional maximum</td></tr>
+        <tr><td>When missing</td><td>Leave the candidate out (with the reason), or count as zero</td></tr>
+        <tr><td>Minimum to be ranked</td><td>Optional, per category, e.g. a minimum PI result</td></tr>
+    </table>
+    <p>Also set the <b>tie-break order</b> (e.g. higher PI result first, then higher CAT percentile, then older candidate first), the <b>decimals</b> (always rounded half up), and the <b>source</b>. <span class="ui">Try it on one candidate</span> shows the calculation for any application number before you approve. A Committee Chairperson or Central Admin clicks <span class="ui">Approve</span>.</p>
+    <figure class="shot tall"><div class="frame"><img src="img/merit-formula.jpg" alt="Merit formula"></div><figcaption>A merit formula with two components and a tie-break</figcaption></figure>
+    <div class="note">Academic marks are used as the <b>percentage the applicant gave</b>. If only a CGPA was given, the value counts as missing and the list shows "percentage not given".</div>
+
+    <h2>Merit lists</h2>
+    <ol class="steps">
+        <li><span class="ui">Merit lists</span> → choose course, cycle and round → <span class="ui">Run the formula</span>.</li>
+        <li>Check the <b>Ranked</b>, <b>Left out</b> (with reasons) and <b>Shared ranks</b> tabs. Click a name for the full breakdown. Filter by category to see category ranks, or by PwBD.</li>
+        <li>Candidates still level after every tie-break share a rank. The committee orders them on the Shared ranks tab, with a reason.</li>
+        <li>A <b>different person</b> clicks <span class="ui">Approve</span>, then <span class="ui">Publish</span>. A published list is read-only.</li>
+    </ol>
+    <figure class="shot tall"><div class="frame"><img src="img/merit-lists.jpg" alt="Merit list"></div><figcaption>A published merit list</figcaption></figure>
+    <figure class="shot"><div class="frame"><img src="img/merit-breakdown.jpg" alt="Breakdown"></div><figcaption>One candidate's breakdown</figcaption></figure>
+    <ul>
+        <li><span class="ui">Excel</span> exports the full breakdown for the committee. <span class="ui">Notice PDF</span> gives a notice-board list (number, name, category, total and ranks, with no contact details). Both are recorded.</li>
+        <li><span class="ui">Check for changes</span> compares the list with today's data and re-calculates the stored data to confirm the result. If marks are reopened or a field is corrected after publishing, the list is marked <b>out of date</b>; run a new version, and <span class="ui">Compare</span> shows what changed.</li>
+    </ul>
+</section>
+
+<!-- ======================= 10. SEATS AND OFFERS ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 10 · Menu: Seats and offers</div>
+    <h1>Seats and offers</h1>
+    <p>After the merit list is published, seats are allotted <b>campus by campus</b> using merit, each candidate's <b>campus preferences</b>, the <b>seats</b> each campus has and the year's <b>reservation rules</b>. Offers go out by email. Applicants never log in: staff record every answer and payment.</p>
+    <div class="note">No percentage, amount or rule is built into the software. Everything below is entered by the admin from IIFT's official policy (Government of India norms) and approved by a second person.</div>
+
+    <h2>1. Categories</h2>
+    <p><span class="ui">Categories</span> lists the reservation categories. <span class="ui">Load the suggested list</span> adds names only; edit them to match the policy. There are three kinds:</p>
+    <table>
+        <tr><th style="width:22%">Kind</th><th>Meaning</th><th style="width:30%">Examples</th></tr>
+        <tr><td>Vertical</td><td>Each applicant has exactly one. One of them is the <b>open</b> (unreserved) category.</td><td>Open/General, SC, ST, OBC-NCL, EWS</td></tr>
+        <tr><td>Horizontal</td><td>Seats set aside <b>inside</b> each vertical category</td><td>PwBD</td></tr>
+        <tr><td>Supernumerary</td><td>Seats <b>added on top</b> of the intake</td><td>Kashmiri Migrants, Foreign Nationals, NRI</td></tr>
+    </table>
+    <p>The portal file's <b>Category</b> column must use these codes. Horizontal and supernumerary categories come in an <b>Additional categories</b> column (e.g. <code>KM; NRI</code>). <b>Staff cannot change an applicant's category</b>; a corrected value comes only from a new import, through update review.</p>
+
+    <h2>2. Reservation rules (every year)</h2>
+    <p><span class="ui">Reservation rules</span> → choose the cycle → <span class="ui">Start the rule set</span> (or copy last year's). Enter:</p>
+    <ul>
+        <li>each reserved vertical category's <b>percentage of the intake</b> (the open category takes the rest);</li>
+        <li>each horizontal category's <b>percentage within each vertical category</b>;</li>
+        <li>the <b>rounding</b> of seat counts (largest remainder, half up, down or up);</li>
+        <li>the <b>conversion of unfilled seats</b>, in order (e.g. OBC-NCL → Open, SC-PwBD → SC), optionally only from a given round;</li>
+        <li>the <b>source</b> (government order, notification or committee decision).</li>
+    </ul>
+    <p>A Committee Chairperson or Central Admin clicks <span class="ui">Approve</span> (never the person who drafted it). An approved rule set is read-only; a change is a new version.</p>
+    <figure class="shot phone tall"><div class="frame"><img src="img/seats-rules.jpg" alt="Reservation rules"></div><figcaption>A draft rule set (test values)</figcaption></figure>
+
+    <h2>3. Seats and offer settings</h2>
+    <p><span class="ui">Seats and offer settings</span> → course, cycle and round → <span class="ui">Calculate seats</span>. The table shows the seats for every campus and category. Click a number to adjust it, with a reason (for example, to enter supernumerary seats). Another person approves the matrix.</p>
+    <p>Below the table, set the <b>offer settings</b> for the course and cycle: days to reply and pay, the reminder days (e.g. 3 and 1 days before), the <b>amount to accept an offer</b>, the <b>waitlist hold amount</b> and days to pay it, and the <b>waitlist size</b> for each category (e.g. 2 means twice the category's seats).</p>
+    <figure class="shot phone tall"><div class="frame"><img src="img/seats-matrix.jpg" alt="Seat matrix"></div><figcaption>The seat matrix and offer settings</figcaption></figure>
+
+    <h2>4. Seat allocation</h2>
+    <ol class="steps">
+        <li><span class="ui">Seat allocation</span> → <span class="ui">Run the allocation</span>. It needs the published merit list and the approved seat matrix.</li>
+        <li>Candidates are taken in <b>merit order</b>. Each goes through their campus preferences in order and, at each campus, tries an <b>open seat</b> first (everyone competes for open seats on merit), then a seat of their own category, then horizontal and supernumerary seats. Everyone gets the most preferred campus where a seat is free.</li>
+        <li>Seats still unfilled are converted by the rule set and the run repeats until nothing changes. The log lists every conversion.</li>
+        <li>Everyone not placed is <b>waitlisted</b> in merit order, up to the waitlist size of their category; the rest are "not offered".</li>
+        <li>Check the table of seats, filled seats and the last rank for each campus and category, and search any candidate to see <b>why</b>.</li>
+        <li>A <b>different person</b> clicks <span class="ui">Approve and publish</span>. Offers and waitlist emails go out at once.</li>
+    </ol>
+    <figure class="shot phone tall"><div class="frame"><img src="img/seats-allocation.jpg" alt="Allocation"></div><figcaption>An allocation run before approval</figcaption></figure>
+    <div class="note">If two candidates share a merit rank and only one of them would get a seat, the run stops: resolve the tie in the merit list first.</div>
+
+    <h2>5. Offers, payments and the waitlist</h2>
+    <p><span class="ui">Offers and waitlist</span> has three tabs: <b>Offers</b>, <b>Waitlist</b> and <b>Past the deadline</b>.</p>
+    <ul>
+        <li><span class="ui">Record answer</span>: accepts or declines, by phone or email (for email, attach the applicant's reply). An acceptance needs the <b>payment</b>: amount, mode, reference (UTR or DD number), date and the receipt.</li>
+        <li><b>Moving up:</b> tick "Wants to move up" when the candidate prefers a campus they ranked higher. They <b>keep their seat</b>; if a seat frees up at the preferred campus they get a move-up offer, and the old seat is released only when they accept it.</li>
+        <li><b>Waitlist hold:</b> waitlisted candidates are emailed (without a position number) the amount to pay to keep their place. <span class="ui">Record hold payment</span> marks the place as held. Only held places are considered when seats free up.</li>
+        <li><b>Nothing lapses on its own.</b> The <b>Past the deadline</b> tab lists offers without an answer or payment, and unpaid waitlist places. Confirm each one with <span class="ui">Confirm lapse</span>.</li>
+        <li><b>Freed seats</b> (declines, confirmed lapses, withdrawals, moves) start a <b>vacancy run</b> automatically. It waits on the Seat allocation page for a second person to approve and publish.</li>
+        <li>Reminder emails go out automatically on the reminder days, at most once a day.</li>
+    </ul>
+    <figure class="shot phone tall"><div class="frame"><img src="img/seats-offers.jpg" alt="Offers"></div><figcaption>An offer accepted by phone, with its payment</figcaption></figure>
+
+    <h2>6. Payments (Accounts)</h2>
+    <p><span class="ui">Payments</span> lists payments waiting for a check. Accounts compares each with the bank statement and clicks <span class="ui">Verify</span> or <span class="ui">Reject</span> with a reason. You cannot verify a payment you recorded. A rejected payment flags the offer so staff record a new payment. <b>Payments are never edited or deleted.</b></p>
+    <p>The application's <span class="ui">Offer</span> tab shows every offer, answer, payment and who recorded each.</p>
+</section>
+
+<!-- ======================= 11. ADMISSION AND ACCOUNTS ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 11 · Menu: Admission and accounts</div>
+    <h1>Admission and accounts</h1>
+    <p>After an offer is accepted and paid, the candidate is admitted, owes the fees of their campus, pays them in instalments, and may withdraw and get a refund. No payment gateway is used: money moves by bank transfer or DD, and the system records it. <b>Every entry is checked by a second person, and nothing is edited or deleted</b>: mistakes are corrected with returns, reversals and adjustments.</p>
+    <div class="note">Fee amounts, concessions, refund slabs and the admission number format are entered by the admin from IIFT's notifications. None of them is built into the software.</div>
+
+    <h2>1. Fee structure (every cycle)</h2>
+    <p><span class="ui">Fee structure</span> → choose the cycle → <span class="ui">Start the fee structure</span> (or copy last year's). Enter:</p>
+    <ul>
+        <li><b>Fee heads</b>, e.g. tuition, hostel and boarding, a security deposit. Tick "Refundable in full" for a deposit, and "Concessions apply" where a concession can apply.</li>
+        <li><b>Instalments</b> with due dates.</li>
+        <li>The <b>amount</b> of each head in each instalment, for every campus and course.</li>
+        <li><b>Concessions</b>, e.g. "SC, ST, PwBD: 50% of tuition". If two apply, the larger is used.</li>
+        <li>The <b>source</b> (fee notification).</li>
+    </ul>
+    <p>Another person clicks <span class="ui">Approve</span>. An admitted candidate keeps the version they were admitted under.</p>
+    <figure class="shot phone tall"><div class="frame"><img src="img/acc-fees.jpg" alt="Fee structure"></div><figcaption>Drafting a fee structure (test values)</figcaption></figure>
+
+    <h2>2. Refund policy (every cycle)</h2>
+    <p><span class="ui">Refund policy</span> → <span class="ui">Load the suggested UGC slabs</span>. The draft has slabs counted from the campus's <b>last date of admission</b>: full refund less a processing fee 15 or more days before, then 90%, 80%, 50%, and nothing more than 30 days after. <b>Check every slab against the current UGC order</b>, add the source, and have another person approve it. Enter each campus's last date of admission on the <b>round page</b>.</p>
+
+    <h2>3. Confirming admissions</h2>
+    <p><span class="ui">Admissions</span> → course, cycle and round. First set the <b>admission number pattern</b> at the bottom, from the parts <code>{YEAR}</code>, <code>{AY}</code>, <code>{CYCLE}</code>, <code>{ROUND}</code>, <code>{CAMPUS}</code>, <code>{COURSE}</code> and a serial <code>{SEQ:4}</code> (e.g. <code>{COURSE}/{YEAR}/{CAMPUS}/{SEQ:4}</code> → MBA-IB/2027/DEL/0001), and the fee reminder days.</p>
+    <ol class="steps">
+        <li>The <b>Ready to confirm</b> tab lists accepted offers and anything still in the way: an unverified acceptance payment, documents not verified, a move-up offer waiting, or no approved fee structure.</li>
+        <li>When nothing is in the way, the Admission Officer clicks <span class="ui">Confirm admission</span>. Optionally add <b>conditions</b> with deadlines, e.g. "degree proof by 31 October".</li>
+        <li>The candidate gets the admission number by email. Their dues are worked out from the fee structure and concessions. The acceptance amount, and a waitlist hold if any, count towards the fees.</li>
+    </ol>
+    <figure class="shot phone tall"><div class="frame"><img src="img/acc-admissions.jpg" alt="Admissions"></div><figcaption>An admission confirmed, with its number</figcaption></figure>
+    <p>The <b>Conditions overdue</b> tab lists conditions past their deadline. Nothing is cancelled on its own: mark the condition met or waived (with a reason), or record a cancellation.</p>
+
+    <h2>4. Fees tab and payments</h2>
+    <p>The application's <span class="ui">Fees</span> tab shows the dues for each instalment and head, concessions, adjustments, what is paid and the balance. Only <b>verified</b> payments count.</p>
+    <ul>
+        <li><span class="ui">Record a payment</span>: amount, mode, reference (UTR, DD or challan), date, payer and the receipt. It goes to the oldest dues first.</li>
+        <li>Accounts, on <span class="ui">Payments</span>, clicks <span class="ui">Verify</span> (the candidate is emailed a PDF receipt), <span class="ui">Return</span> for correction (staff then record a corrected entry), or <span class="ui">Reject</span> with a reason.</li>
+        <li><span class="ui">Reverse</span> a verified payment that later fails, e.g. a bounced DD. Another person approves the reversal.</li>
+        <li><span class="ui">Adjust a due</span>, e.g. a waiver approved by the committee, with a reason and its source. Another person approves it.</li>
+        <li>Reminder emails go out on the reminder days before each due date.</li>
+    </ul>
+    <figure class="shot phone tall"><div class="frame"><img src="img/acc-fees-tab.jpg" alt="Fees tab"></div><figcaption>The Fees tab after a payment is recorded</figcaption></figure>
+
+    <h2>5. Withdrawal and refunds</h2>
+    <ol class="steps">
+        <li>On the Fees tab, <span class="ui">Withdrawal or cancellation</span>: the date received, how (for an email, attach it), and the reason.</li>
+        <li>Another person confirms it on the Admissions page (<b>Withdrawals to confirm</b>). The admission ends, the seat is freed (a vacancy run is prepared for approval), and a <b>refund request</b> is prepared.</li>
+        <li><span class="ui">Refunds</span> shows the calculation line by line:
+            <ul>
+                <li>fully refundable heads;</li>
+                <li>the slab percentage of the other fees paid;</li>
+                <li>the processing fee;</li>
+                <li>any excess paid;</li>
+                <li>refunds already made.</li>
+            </ul>
+            Add deductions if any, with reasons. Another person approves, returns or rejects it. An approved amount can never exceed what is refundable.</li>
+        <li>The money is paid outside the system. Record each refund payment (partial payments are allowed); another person verifies each. The request becomes "refunded" when the approved amount is paid.</li>
+    </ol>
+    <p><b>Waitlist holds</b> of candidates who never got a seat appear under "Waitlist holds to refund" and are refunded in full. A refund never brings back an offer or seat.</p>
+
+    <h2>6. Bank statements, dashboard and reports</h2>
+    <ul>
+        <li><span class="ui">Bank statements</span>: upload the bank's statement (CSV or Excel). Credits are matched to recorded payments by reference and amount. Unmatched lines and payments are listed for you to match by hand.</li>
+        <li><span class="ui">Dashboard and reports</span>:
+            <ul>
+                <li>the admission funnel by category (imported, called, interviewed, ranked, offered, accepted, waitlisted, admitted, withdrawn);</li>
+                <li>seats by campus;</li>
+                <li>fees due against received;</li>
+                <li>collections by date and outstanding dues, with Excel exports.</li>
+            </ul>
+        </li>
+    </ul>
+    <figure class="shot phone tall"><div class="frame"><img src="img/acc-reports.jpg" alt="Reports"></div><figcaption>Dashboard: money and the admission funnel</figcaption></figure>
+</section>
+
+<!-- ======================= 12. SYSTEM ======================= -->
+
+
+<section class="chapter">
+    <div class="kicker">Chapter 12 · Menu: System · For IT and administrators</div>
+    <h1>System administration</h1>
+
+    <h2>Installation (first time)</h2>
+    <p>Upload the release package to the server so that the web address points at its <span class="path">public</span> folder, then open <span class="path">https://&lt;your site&gt;/install</span>. The wizard:</p>
+    <ol class="steps">
+        <li>checks the server (PHP 8.3 and its extensions, writable folders; Redis and ClamAV can be added later);</li>
+        <li>connects to the database (MySQL 8);</li>
+        <li>sets the site address, time zone (Asia/Kolkata) and email server, with a <b>test email</b>;</li>
+        <li>sets file storage, Redis and virus scanning;</li>
+        <li>saves the settings, creates the tables, and creates the <b>first Super Admin</b>.</li>
+    </ol>
+    <p>The wizard closes for good once the first Super Admin exists. The last page shows the <b>cron job</b> to add, which runs every minute. It sends reminders and, on servers without Redis, also processes imports and emails, so these do not move without it. Full steps for shared hosting are in the deployment guide that comes with the system.</p>
+
+    <h2>Updates</h2>
+    <p>Upload the new release over the old one, keeping the <span class="path">.env</span> file and the <span class="path">storage</span> folder. Then an IT Administrator opens <span class="ui">System</span> → <span class="ui">Maintenance</span>. If database updates are pending they are listed: <b>take a backup first</b>, type <b>MIGRATE</b> and your password, and click <span class="ui">Apply updates</span>.</p>
+    <figure class="shot"><div class="frame"><img src="img/maintenance.jpg" alt="Maintenance"></div><figcaption>Maintenance: pending database updates</figcaption></figure>
+
+    <h2>Health, settings, audit</h2>
+    <ul>
+        <li><span class="ui">System health</span>: database, Redis, storage, the virus scanner, the scheduler (cron) and the queues. A warning here needs IT attention.</li>
+        <li><span class="ui">Settings</span>: for example the session timeout, sign-in lock rules, invitation expiry, support email, deficiency reply days, and allowed document-link websites. Technical settings belong to the IT Administrator.</li>
+        <li><span class="ui">Audit log</span>: every change, with who, when, the old and new values and the reason. Filter by date, person, action or record.</li>
+    </ul>
+    <figure class="shot"><div class="frame"><img src="img/health.jpg" alt="System health"></div><figcaption>System health</figcaption></figure>
+    <div class="warn"><b>Personal data.</b> Applicant data is covered by the DPDP Act 2023. Give accounts only to people who need them, keep the site on HTTPS, use real virus scanning (ClamAV) before real documents are uploaded, and keep backups off the server.</div>
+</section>
+
+<!-- ======================= 11. ROLES ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 13</div>
+    <h1>Roles at a glance</h1>
+    <p>Each role can be limited to a campus, course and/or cycle. The exact permissions are under <span class="ui">People</span> → <span class="ui">Roles and permissions</span>.</p>
+    <table>
+        <tr><th style="width:24%">Role</th><th style="width:9%">2FA</th><th>Typical work</th></tr>
+        <tr><td>Super Admin</td><td>Yes</td><td>Everything: setup, users, roles, sources, settings, audit</td></tr>
+        <tr><td>IT Administrator</td><td>Yes</td><td>System health, technical settings, Maintenance (database updates), unlocking accounts. No applicant data</td></tr>
+        <tr><td>Central Admission Administrator</td><td>Yes</td><td>Cycles, rounds, approving imports, documents, scrutiny, eligibility, call lists, stages, panels, marks, merit, reservation, allocation and payments (all approvals)</td></tr>
+        <tr><td>Branch Administrator</td><td>Yes</td><td>Their campus: users and teams, applications, documents, scrutiny, contact, panels, viewing merit, offers at their campus</td></tr>
+        <tr><td>Committee Chairperson</td><td>No</td><td>Confirming "not eligible", approving call lists and merit formulas, approving and publishing merit lists, reservation rules, seat matrices and allocations, viewing and reopening marks, marking</td></tr>
+        <tr><td>Committee Member</td><td>No</td><td>Marking candidates on their panels</td></tr>
+        <tr><td>Admission Cell Officer</td><td>No</td><td>Imports, applications, documents, scrutiny, eligibility, call lists, panels, contact, merit formulas and lists, reservation rules, seats and allocation runs (running, not approving), offers and payments</td></tr>
+        <tr><td>Admission Cell Staff</td><td>No</td><td>Documents, applicant contact, scheduling interviews, recording offer answers and payments</td></tr>
+        <tr><td>Faculty / Panel Member</td><td>No</td><td>My interviews: marking own candidates</td></tr>
+        <tr><td>Reporting Officer</td><td>No</td><td>Viewing approved information such as merit lists</td></tr>
+        <tr><td>Accounts Officer / Staff</td><td>Officer: Yes</td><td>Staff record payments and refund payments; the Officer verifies, returns or rejects them, approves reversals, adjustments and refunds</td></tr>
+    </table>
+    <div class="note">The person who uploads an import, runs a call list or runs a merit list can never approve or publish the same item. This applies even to Super Admins.</div>
+</section>
+
+<!-- ======================= 12. FAQ ======================= -->
+<section class="chapter">
+    <div class="kicker">Chapter 14</div>
+    <h1>Questions and troubleshooting</h1>
+    <table>
+        <tr><th style="width:38%">Question</th><th>Answer</th></tr>
+        <tr><td>I cannot see a menu item or a page says "Not found".</td><td>Your role or scope does not include it. Pages outside your campus, course or cycle show "Not found". Ask your administrator.</td></tr>
+        <tr><td>My import stays "Queued" or emails do not arrive.</td><td>The every-minute cron job is not running. IT: check System health → Scheduler.</td></tr>
+        <tr><td>Why can I not approve this import?</td><td>You uploaded it. Another person with approval rights must approve it.</td></tr>
+        <tr><td>An import shows "Updates" for an applicant.</td><td>The applicant was imported before and the file has different values. Check them in the preview; verified fields go to Field reviews instead of changing.</td></tr>
+        <tr><td>I cannot enter marks for a candidate.</td><td>The candidate is not marked Present yet, your marks are already submitted (ask the chair to reopen), or you declared a conflict of interest.</td></tr>
+        <tr><td>The stage formula cannot be changed.</td><td>Results in that stage are already locked. The formula must be set before results are locked.</td></tr>
+        <tr><td>A merit list says "out of date".</td><td>Data changed after publishing (e.g. marks reopened). Run the formula again for a new version and compare.</td></tr>
+        <tr><td>Can a round start before the academic year?</td><td>Yes. Admission rounds for 2027-28 can start in December 2026. They must end by the end of the academic year.</td></tr>
+        <tr><td>Does an applicant ever sign in?</td><td>No. Applicants are contacted by email and phone; staff record their replies on the Contact tab.</td></tr>
+        <tr><td>I lost my phone with the authenticator app.</td><td>Sign in with one of your recovery codes, then set up two-factor again under Account. Without codes, ask the IT Administrator.</td></tr>
+    </table>
+
+    <h2>Terms used</h2>
+    <table>
+        <tr><th style="width:30%">Term</th><th>Meaning</th></tr>
+        <tr><td>Branch / campus</td><td>One of the institute's campuses (Delhi, Kolkata, Kakinada, GIFT City)</td></tr>
+        <tr><td>Offering</td><td>A course at a campus in a cycle, with its seats (intake)</td></tr>
+        <tr><td>Cycle</td><td>One admission year's process, e.g. Admissions 2027 for the 2027-28 academic year</td></tr>
+        <tr><td>Round</td><td>A stage of admissions with its own shortlisted applicants and dates (Round 1, Round 2, …)</td></tr>
+        <tr><td>Source</td><td>Where applicant data comes from, normally the admission portal</td></tr>
+        <tr><td>Batch</td><td>One import (a file or an API push), checked and approved as a whole</td></tr>
+        <tr><td>Scrutiny</td><td>Checking documents and details against the course's checklist</td></tr>
+        <tr><td>Call list</td><td>Who is called for the selection process (GD/PI) in a round</td></tr>
+        <tr><td>Stage result</td><td>A candidate's combined GD/PI/WAT result from all panel members, by the stage's formula</td></tr>
+        <tr><td>Merit list</td><td>Candidates ranked by the approved merit formula, per course and round</td></tr>
+        <tr><td>PwBD</td><td>Persons with benchmark disabilities</td></tr>
+        <tr><td>2FA</td><td>Two-factor sign-in: password plus a code from an authenticator app</td></tr>
+    </table>
+    <p class="meta" style="margin-top:8mm">Trinix Admission · User Manual · Version 0.8 · November 2026</p>
+</section>
+
+</body>
+</html>

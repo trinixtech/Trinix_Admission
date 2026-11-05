@@ -1,0 +1,125 @@
+name: Release
+
+# Builds a ready-to-upload package (vendor/ and built screens included; nothing to install on the server)
+# when a version tag is pushed (e.g. v0.5.0), attaches it to a GitHub Release, and, if the deploy secrets
+# are set, uploads it to the hosting account over FTPS/SFTP. Can also be started by hand.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release, e.g. 0.5.0 (creates the tag v0.5.0 and a GitHub Release); empty = test build only'
+        type: string
+        default: ''
+      deploy:
+        description: 'Upload to the test host after building'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: Build release package
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}";
+          elif [ -n "${{ inputs.version }}" ]; then V="${{ inputs.version }}";
+          else V="0.0.0-$(git rev-parse --short HEAD)"; fi
+          [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]] || { echo "::error::Version must look like 0.5.0"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, pdo_sqlite, intl, zip, mbstring, dom, curl
+          coverage: none
+      - run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund && npx vite build
+      - name: Assemble package
+        run: |
+          echo "${{ steps.v.outputs.version }}" > VERSION
+          mkdir -p dist
+          zip -qr "dist/trinix-admission-${{ steps.v.outputs.version }}.zip" . \
+            -x '.git/*' '*/.git/*' 'node_modules/*' 'tests/*' '.github/*' 'docs/*' 'dist/*' 'database/seeders/DemoSeeder.php' \
+               '.env' 'database/*.sqlite' 'storage/logs/*.log' 'storage/app/private/*' 'storage/e2e/*' \
+               'storage/framework/cache/data/*' 'storage/framework/sessions/*' 'storage/framework/views/*.php' \
+               'bootstrap/cache/config.php' 'bootstrap/cache/routes-*.php'
+          ls -lh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trinix-admission-${{ steps.v.outputs.version }}
+          path: dist/*.zip
+      - name: GitHub Release
+        if: startsWith(github.ref, 'refs/tags/') || inputs.version != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.v.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Trinix Admission ${{ steps.v.outputs.version }}
+          files: dist/*.zip
+          generate_release_notes: true
+
+  deploy:
+    name: Upload to the test host
+    needs: package
+    if: github.event_name == 'push' || inputs.deploy
+    runs-on: ubuntu-latest
+    environment: test-host
+    env:
+      HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - name: Check the deploy settings
+        id: ready
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "::notice::No DEPLOY_HOST secret on the test-host environment: package built, nothing uploaded. See docs/DEPLOYMENT.md."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.ready.outputs.go == 'true'
+        with:
+          name: trinix-admission-${{ needs.package.outputs.version }}
+      - name: Upload over FTPS/SFTP
+        if: steps.ready.outputs.go == 'true'
+        env:
+          PROTOCOL: ${{ secrets.DEPLOY_PROTOCOL }}
+          PORT: ${{ secrets.DEPLOY_PORT }}
+          USER: ${{ secrets.DEPLOY_USER }}
+          PASS: ${{ secrets.DEPLOY_PASSWORD }}
+          REMOTE: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          sudo apt-get -qq install -y lftp unzip >/dev/null
+          mkdir app && unzip -q trinix-admission-*.zip -d app
+          PROTO="${PROTOCOL:-ftps}"
+          case "$PROTO" in sftp) URL="sftp://$HOST:${PORT:-22}";; ftps) URL="ftp://$HOST:${PORT:-21}";; *) URL="ftp://$HOST:${PORT:-21}";; esac
+          SETTINGS="set net:max-retries 3; set net:timeout 30; set sftp:auto-confirm yes; set ftp:ssl-allow yes"
+          [ "$PROTO" = "ftps" ] && SETTINGS="$SETTINGS; set ftp:ssl-force yes; set ftp:ssl-protect-data yes"
+          # Code is replaced (files gone from the release are deleted); the server's own files are never touched:
+          # .env, storage/ (documents, logs, installed.lock), database files and .htaccess in the root.
+          lftp -u "$USER","$PASS" "$URL" -e "$SETTINGS; \
+            mirror -R --delete --parallel=4 --verbose=1 \
+              --exclude-glob .env --exclude ^storage/ --exclude-glob '*.sqlite' --exclude ^\.htaccess$ \
+              app/ '${REMOTE:-.}'; \
+            mirror -R --only-missing --parallel=4 app/storage/ '${REMOTE:-.}/storage'; \
+            bye"
+      - name: Next steps
+        if: steps.ready.outputs.go == 'true'
+        run: |
+          echo "::notice::Uploaded ${{ needs.package.outputs.version }}. First time: open https://<your domain>/install. Afterwards: sign in as IT Administrator → System → Maintenance to apply any database updates."

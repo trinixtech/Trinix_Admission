@@ -1,0 +1,15 @@
+# Use only when the hosting panel cannot point the (sub)domain's web root at the app's public/ folder.
+# Copy this block to the TOP of the .htaccess in the app's root folder (keep any cPanel-generated
+# "php ini directives" / "php handler" blocks below it). Every request is then served from public/,
+# and nothing else (.env, storage, vendor) can be reached from the web.
+# --- Trinix Admission: serve the app from public/ (keep this block at the top) ---
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+# Never serve hidden files such as .env
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+# --- end Trinix Admission ---

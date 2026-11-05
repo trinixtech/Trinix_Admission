@@ -1,0 +1,101 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Stage settings (mockup)</title><style>
+  :root { --brand: #1f5fa8; --brand-50: #eef4fb; --ink: #0f172a; --muted: #475569; --line: #e2e8f0; --bg: #f8fafc; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--ink); background: var(--bg); }
+  header { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; height: 56px; padding: 0 16px; background: #fff; border-bottom: 1px solid var(--line); z-index: 2; }
+  header b { font-size: 17px; }
+  header a { color: var(--brand); font-weight: 500; text-decoration: none; font-size: 15px; }
+  main { padding: 16px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .slots { display: flex; gap: 8px; overflow-x: auto; margin: 14px -16px 16px; padding: 0 16px 4px; }
+  .slot { flex: 0 0 auto; min-height: 44px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--line); background: #fff; font-size: 14px; text-align: left; }
+  .slot b { display: block; font-size: 15px; }
+  .slot.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .slot.done { background: #ecfdf5; border-color: #a7f3d0; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .green { background: #dcfce7; color: #14532d; } .amber { background: #fef3c7; color: #78350f; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .crit { padding: 12px 0; border-top: 1px solid #f1f5f9; }
+  .crit:first-of-type { border-top: 0; }
+  label { font-weight: 600; display: block; }
+  .max { color: var(--muted); font-weight: 400; font-size: 14px; }
+  .mark { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+  .mark input { width: 96px; min-height: 48px; font-size: 20px; text-align: center; border: 1px solid #cbd5e1; border-radius: 10px; }
+  .mark input.filled { border-color: var(--brand); background: var(--brand-50); }
+  .steps { display: flex; gap: 6px; }
+  .steps button { min-width: 44px; min-height: 44px; border-radius: 10px; border: 1px solid #cbd5e1; background: #fff; font-size: 15px; }
+  textarea { width: 100%; min-height: 88px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px; font: inherit; }
+  .total { font-size: 18px; }
+  .saved { color: #166534; font-size: 14px; font-weight: 600; }
+  .btn { display: block; width: 100%; min-height: 48px; border-radius: 10px; border: 0; font-size: 17px; font-weight: 600; }
+  .primary { background: var(--brand); color: #fff; }
+  .secondary { background: #fff; border: 1px solid #cbd5e1; color: var(--ink); margin-top: 8px; }
+  .link { color: var(--brand); font-weight: 500; text-decoration: none; }
+  .note { background: var(--brand-50); border: 1px solid #d6e4f5; border-radius: 10px; padding: 10px 12px; font-size: 14px; color: #133b69; margin: 12px 0; }
+  .bar { position: sticky; bottom: 0; background: #fff; border-top: 1px solid var(--line); padding: 12px 16px; margin: 0 -16px; }
+  @media (min-width: 700px) { .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; } .crit:nth-of-type(2) { border-top: 0; } }
+</style><style>
+  .cand { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; background:#fff; }
+  .cand.done { border-color:#a7f3d0; background:#f0fdf4; }
+  .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .chip { min-width:44px; min-height:44px; border-radius:10px; border:1px solid #cbd5e1; background:#fff; font-size:16px; }
+  .chip.on { background:var(--brand); color:#fff; border-color:var(--brand); }
+  .mini { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-top:8px; }
+  .mini label { font-size:14px; font-weight:600; }
+  .mini input { width:100%; min-height:44px; font-size:18px; text-align:center; border:1px solid #cbd5e1; border-radius:10px; }
+  .mini input.filled { border-color:var(--brand); background:var(--brand-50); }
+  table { width:100%; border-collapse:collapse; font-size:15px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid #f1f5f9; }
+  th { font-size:13px; color:var(--muted); }
+  select { width:100%; min-height:44px; border:1px solid #cbd5e1; border-radius:10px; padding:0 10px; font-size:16px; background:#fff; }
+  .flow { display:flex; align-items:center; gap:6px; font-size:14px; margin:8px 0 0; flex-wrap:wrap; }
+  .flow span { padding:2px 10px; border-radius:999px; background:#e2e8f0; }
+  .flow span.now { background:var(--brand); color:#fff; }
+</style><style>
+ .field{margin-top:14px} .field label{font-weight:600;display:block;margin-bottom:4px}
+ .field input[type=text]{width:100%;min-height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 12px;font-size:16px}
+ .toggle{display:flex;align-items:flex-start;gap:12px;margin-top:14px}
+ .sw{flex:0 0 52px;height:32px;border-radius:999px;background:#cbd5e1;position:relative;margin-top:2px}
+ .sw::after{content:'';position:absolute;top:3px;left:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+ .sw.on{background:var(--brand)} .sw.on::after{left:23px}
+ .help{color:var(--muted);font-size:14px;margin:4px 0 0}
+ .tabs{display:flex;gap:6px;margin:14px 0} .tabs span{padding:10px 14px;border-radius:10px;background:#e2e8f0;font-weight:600}
+ .tabs span.on{background:var(--brand);color:#fff}
+ .crow{display:grid;grid-template-columns:1fr 84px 44px;gap:8px;margin-top:8px} .crow input{min-height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font-size:16px;width:100%}
+ .x{min-height:44px;border:1px solid #cbd5e1;border-radius:10px;background:#fff}
+</style></head><body><header><span aria-hidden='true'>☰</span><b>Trinix Admission</b><a href='#'>Account</a></header><main>
+  <p class="muted" style="margin:0">Admin · Selection setup</p>
+  <h1>Stages and criteria</h1>
+  <p class="muted" style="margin:0">MBA (International Business) · Admissions 2027</p>
+  <div class="tabs"><span>1 · WAT</span><span>2 · GD</span><span class="on">3 · PI</span></div>
+
+  <section class="card">
+    <h2 style="margin:0;font-size:18px">Personal Interview</h2>
+    <p class="help">Each stage has its own panels. Candidates come here from the GD panels.</p>
+
+    <div class="toggle"><div class="sw" role="switch" aria-checked="false"></div>
+      <div><b>Panel sees marks from earlier stages</b><p class="help">Off: PI panel members do not see the candidate's WAT or GD marks.</p></div></div>
+
+    <div class="field"><label for="min">Minimum GD average to be sent to PI</label>
+      <input id="min" type="text" placeholder="No minimum"><p class="help">Leave empty for no minimum. Candidates below it cannot be sent on; the send screen shows why. Enter IIFT's own value; none is suggested.</p></div>
+
+    <div class="field"><label for="out">Flag unusual marks when a member's total differs from the panel average by more than</label>
+      <input id="out" type="text" value="5"><p class="help">Flagged for the chair to look at; marks are never changed.</p></div>
+
+    <div class="field"><label>Remarks</label>
+      <select><option>Required always</option><option>Required when the total is below a value</option><option>Optional</option></select></div>
+  </section>
+
+  <section class="card">
+    <h2 style="margin:0 0 4px;font-size:18px">Criteria</h2>
+    <p class="help">Every panel member marks every candidate; the stage result is their average.</p>
+    <div class="crow"><input value="Communication"><input value="10" aria-label="Maximum"><button class="x">✕</button></div>
+    <div class="crow"><input value="Subject knowledge"><input value="15" aria-label="Maximum"><button class="x">✕</button></div>
+    <div class="crow"><input value="Clarity of goals"><input value="10" aria-label="Maximum"><button class="x">✕</button></div>
+    <div class="crow"><input value="Overall impression"><input value="5" aria-label="Maximum"><button class="x">✕</button></div>
+    <p style="margin:10px 0 0"><a class="link" href="#">+ Add criterion</a> · <b>Total 40</b></p>
+  </section>
+  <div class="bar"><button class="btn primary">Save PI settings</button></div>
+</main></body></html>
