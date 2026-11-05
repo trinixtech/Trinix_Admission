@@ -5,6 +5,7 @@ import { visibleNav } from '@/lib/nav';
 import PageHeader from '@/components/PageHeader.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import WorkflowTracker from '@/components/WorkflowTracker.vue';
+import MyDayCard from '@/components/MyDayCard.vue';
 import { api } from '@/lib/api';
 import { scopeLabel } from '@/lib/format';
 import { useAuth } from '@/stores/auth';
@@ -21,8 +22,9 @@ onMounted(async () => {
 </script>
 
 <template>
-    <PageHeader :title="`Hello, ${auth.me?.name ?? ''}`" subtitle="Your roles and the admission cycles in progress." />
+    <PageHeader :title="`Hello, ${auth.me?.name ?? ''}`" :subtitle="auth.can('cycles.view') ? 'Where admissions stand and what to do next.' : 'Your interviews and roles.'" />
 
+    <MyDayCard v-if="auth.can('evaluations.submit')" />
     <WorkflowTracker v-if="auth.can('cycles.view')" />
 
     <section v-if="modules.length" aria-labelledby="quick" class="mb-6">
