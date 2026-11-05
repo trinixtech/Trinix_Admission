@@ -13,6 +13,7 @@ use App\Modules\Selection\Models\InterviewPanel;
 use App\Modules\Selection\Services\EvaluationService;
 use App\Modules\Selection\Services\StageFormula;
 use App\Support\Scope;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
@@ -544,4 +545,51 @@ it('lets only the admin lock results, one by one or all complete ones of a stage
     expect($r['locked'])->toBe(1)->and(collect($r['skipped'])->pluck('reason', 'portal_application_no')->all())->toBe([
         'PRTM0000003' => '1 panel member(s) have not submitted yet.', 'PRTM0000004' => 'Not marked present (or absent) yet.']);
     expect($c1->fresh()->status)->toBe('completed');
+});
+
+it('imports interview dates, panels, venues, slots and members from the Excel template, after a preview', function () {
+    [$gd, $pi] = stages($this);
+    $this->actingAs($this->staff)->get('/api/v1/panels/schedule-template?'.http_build_query(['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid]))
+        ->assertOk()->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    $d = now('Asia/Kolkata')->addDays(3)->format('d-m-Y');
+    $csv = fn (array $rows) => UploadedFile::fake()->createWithContent('schedule.csv', implode("\n", array_merge(
+        ['Stage,Panel,Date,Mode,Venue,City,Room,Meeting link,Slot start,Slot end,Candidates per slot,Members'], $rows))."\n");
+    $q = ['course_uid' => $this->w->mba->uid, 'round_uid' => $this->round1->uid];
+
+    // Problems are listed by row and nothing is saved.
+    $bad = $this->post('/api/v1/panels/schedule-import', $q + ['file' => $csv([
+        "ESSAY,X,$d,In person,DEL,,,,10:00,10:30,5,",
+        "GD,GD 1,$d,In person,NOWHERE,,,,10:00,10:30,5,",
+        "GD,GD 1,$d,In person,DEL,Mumbai,,,10:00,10:30,5,",
+        "PI,PI 1,$d,Online,,,,,10:00,10:30,1,",
+        "GD,GD 2,$d,In person,DEL,,,,10:30,10:00,5,",
+        "GD,GD 3,$d,In person,DEL,,,,10:00,10:30,5,nobody@example.org",
+    ])], ['Accept' => 'application/json'])->assertOk()->json('data');
+    expect($bad['token'])->toBeNull()->and(collect($bad['errors'])->pluck('row')->all())->toBe([2, 3, 4, 5, 6, 7]);
+    expect(InterviewPanel::count())->toBe(0);
+
+    // A clash for a member across two panels of the file is refused too.
+    $clash = $this->post('/api/v1/panels/schedule-import', $q + ['file' => $csv([
+        "GD,GD A,$d,In person,DEL,New Delhi,Room 1,,10:00,10:45,6,{$this->f1->email}",
+        "GD,GD B,$d,In person,DEL,New Delhi,Room 2,,10:30,11:15,6,{$this->f1->email}",
+    ])], ['Accept' => 'application/json'])->json('data');
+    expect($clash['token'])->toBeNull()->and($clash['errors'][0]['message'])->toContain('is on panel "GD A" at the same time');
+
+    $ok = $this->post('/api/v1/panels/schedule-import', $q + ['file' => $csv([
+        "GD,GD Delhi 1,$d,In person,DEL,New Delhi,Room 101,,10:00,10:45,6,{$this->f1->email}; {$this->f2->email}",
+        "GD,GD Delhi 1,$d,In person,Delhi campus,,Room 101,,11:00,11:45,6,",
+        "PI,PI Online 1,$d,Online,,,,https://meet.example.org/pi1,14:00,2:20 PM,1,{$this->f3->email}",
+    ])], ['Accept' => 'application/json'])->assertOk()->json('data');
+    expect($ok['errors'])->toBe([])->and($ok['panels'])->toHaveCount(2)->and($ok['panels'][0])->toMatchArray(['slots' => 2, 'places' => 12, 'venue' => 'Delhi campus', 'room' => 'Room 101', 'first' => '10:00 AM', 'exists' => false]);
+    $this->actingAs($this->f1)->postJson("/api/v1/panels/schedule-import/{$ok['token']}/confirm")->assertForbidden();
+    $this->actingAs($this->staff)->postJson("/api/v1/panels/schedule-import/{$ok['token']}/confirm")->assertOk()->assertJsonPath('data', ['panels' => 2, 'members' => 3, 'slots' => 3]);
+    $gdPanel = InterviewPanel::where('name', 'GD Delhi 1')->first();
+    expect($gdPanel->slots()->count())->toBe(2)->and($gdPanel->members()->count())->toBe(2)->and($gdPanel->location_id)->toBe($this->location->id);
+    $this->postJson("/api/v1/panels/schedule-import/{$ok['token']}/confirm")->assertStatus(422); // once only
+
+    // The same panel name, stage and date adds slots to the existing panel.
+    $more = $this->post('/api/v1/panels/schedule-import', $q + ['file' => $csv(["GD,GD Delhi 1,$d,In person,DEL,,Room 101,,12:00,12:45,6,"])], ['Accept' => 'application/json'])->json('data');
+    expect($more['panels'][0]['exists'])->toBeTrue();
+    $this->postJson("/api/v1/panels/schedule-import/{$more['token']}/confirm")->assertOk()->assertJsonPath('data.panels', 0);
+    expect($gdPanel->slots()->count())->toBe(3);
 });

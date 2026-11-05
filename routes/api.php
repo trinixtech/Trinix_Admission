@@ -27,6 +27,7 @@ use App\Modules\Organisation\Http\Controllers\LocationController;
 use App\Modules\Selection\Http\Controllers\AutoAllocationController;
 use App\Modules\Selection\Http\Controllers\EvaluationController;
 use App\Modules\Selection\Http\Controllers\PanelController;
+use App\Modules\Selection\Http\Controllers\ScheduleImportController;
 use App\Modules\Selection\Http\Controllers\StageController;
 use App\Modules\System\Http\Controllers\HealthController;
 use App\Modules\System\Http\Controllers\MaintenanceController;
@@ -152,6 +153,9 @@ Route::prefix('v1')->group(function () {
         Route::post('selection-stages/suggested', [StageController::class, 'suggest']);
         Route::post('selection-stages/copy', [StageController::class, 'copy']);
         Route::patch('selection-stages/{stage}', [StageController::class, 'update']);
+        Route::get('panels/schedule-template', [ScheduleImportController::class, 'template']);
+        Route::post('panels/schedule-import', [ScheduleImportController::class, 'preview']);
+        Route::post('panels/schedule-import/{token}/confirm', [ScheduleImportController::class, 'confirm'])->where('token', '[0-9A-Za-z]{26}');
         Route::get('panels', [PanelController::class, 'index']);
         Route::post('panels', [PanelController::class, 'store']);
         Route::get('panels/{panel}', [PanelController::class, 'show']);
