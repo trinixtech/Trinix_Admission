@@ -134,7 +134,7 @@
     </div>
 
     <h3>Two-factor sign-in</h3>
-    <p>Administrators (Super Admin, IT Administrator, Central Admission Administrator, Branch Administrator, Accounts Officer) must use <b>two-factor sign-in</b>. At your first sign-in you are taken to <span class="ui">Account</span> to set it up:</p>
+    <p>Administrators (Super Admin, IT Administrator, Central Admission Administrator, Branch Administrator) must use <b>two-factor sign-in</b>. At your first sign-in you are taken to <span class="ui">Account</span> to set it up:</p>
     <ol class="steps">
         <li>Install an authenticator app on your phone (for example Google Authenticator or Microsoft Authenticator).</li>
         <li>Click <span class="ui">Set up two-factor</span>, confirm your password, and scan the QR code with the app.</li>
@@ -143,18 +143,29 @@
     <p>After that, each sign-in asks for your password and then the current 6-digit code.</p>
     <div class="tip">Forgot your password? Use <span class="ui">Forgot password?</span> on the sign-in page; a reset link is emailed to you. After several wrong passwords the account locks for a short time; an IT Administrator can unlock it.</div>
 
-    <h2>The screen layout</h2>
+    <h2 style="break-before: page">The screen layout</h2>
     <figure class="shot"><div class="frame"><img src="img/dashboard.jpg" alt="Dashboard"></div><figcaption>The dashboard, with the sidebar menu on the left and the top bar</figcaption></figure>
     <ul>
-        <li><b>Sidebar menu (left):</b> the modules in the order of the admission work. Click a group (for example <span class="ui">Selection (GD/PI)</span>) to open its sub-menu; the page you are on is highlighted. You see only the items your role allows.</li>
+        <li><b>Sidebar menu (left):</b> the modules in the order of the admission work. Click a group (for example <span class="ui">Interviews (GD/PI)</span>) to open its sub-menu; the page you are on is highlighted. You see only the items your role allows.</li>
         <li><b>Collapse sidebar:</b> at the bottom of the sidebar on a computer, this shows icons only to give more room. Click any icon to open the menu again.</li>
-        <li><b>Top bar:</b> shows where you are (for example <i>Home › Selection (GD/PI) › Interview panels</i>). Click a part of the path to go back to it.</li>
+        <li><b>Top bar:</b> shows where you are (for example <i>Home › Interviews (GD/PI) › Panels, slots and schedule</i>). Click a part of the path to go back to it.</li>
         <li><b>Your name (top right):</b> opens the account menu, with Account and security, the <b>theme</b> (Light, Dark or Device, which follows your phone or computer) and <b>Sign out</b>.</li>
-        <li><b>Dashboard:</b> shortcut cards for each module you can use, your roles, and the admission cycles in progress.</li>
+        <li><b>Dashboard:</b> the <b>Admission workflow</b> for a course and round (below), today's interviews for panel members, shortcut cards for each module you can use, your roles, and the cycles in progress.</li>
     </ul>
     <div class="grid2">
         <figure class="shot"><div class="frame"><img src="img/user-menu.jpg" alt="Account menu"></div><figcaption>The account menu with the theme switch</figcaption></figure>
         <figure class="shot"><div class="frame"><img src="img/dashboard-dark.jpg" alt="Dark theme"></div><figcaption>The dark theme</figcaption></figure>
+    </div>
+
+    <h3>The admission workflow</h3>
+    <p>The top of the dashboard follows one course in one round through every step: <b>Setup, Faculty, Students, Applicants' files</b> (optional), <b>Stages and criteria, Interview schedule, Schedule emails, Attendance and marks, Lock results</b> and the <b>Merit list</b>. Choose the course, cycle and round; each step shows live counts (for example "GD: 2 panels, 45 of 50 scheduled") and a link to the screen where it is done. The box at the top names the <b>next step</b>.</p>
+    <ul>
+        <li><b>Done</b> (green tick), <b>To do</b>, <b>Needs attention</b> (amber: something is waiting, such as an import to approve or candidates not yet emailed), <b>Not yet</b> (an earlier step must come first) and <b>Optional</b>.</li>
+        <li>The course, cycle and round you choose are remembered on other screens of this browser until you sign out.</li>
+        <li>Panel members see <b>My interviews today</b> instead: their panels, how many candidates they have marked, or the date of their next interviews.</li>
+    </ul>
+    <div class="phones">
+        <figure class="shot phone"><div class="frame"><img src="img/phone-faculty-home.jpg" alt="Panel member's dashboard"></div><figcaption>A panel member's dashboard</figcaption></figure>
     </div>
 
     <h3>On a phone or tablet</h3>
@@ -232,7 +243,7 @@
     <figure class="shot"><div class="frame"><img src="img/import-faculty.jpg" alt="Import faculty"></div><figcaption>Import faculty</figcaption></figure>
 
     <h2>Roles and permissions, teams</h2>
-    <p><span class="ui">Roles and permissions</span> shows what each role may do (see Chapter 10). Only the Super Admin can change a role's permissions. <span class="ui">Teams</span> holds committees, admission cells and accounts teams, with their members and history.</p>
+    <p><span class="ui">Roles and permissions</span> shows what each role may do (see Chapter 10). Only the Super Admin can change a role's permissions. <span class="ui">Teams</span> holds committees and admission cells, with their members and history.</p>
 </section>
 
 <!-- ======================= 5. APPLICANTS ======================= -->
@@ -282,6 +293,7 @@
         <li><b>Remarks required</b>: always, never, or only when the total is below a value.</li>
         <li><b>Stage result from panel members' totals</b>: the formula combining the members' marks. Use <span class="path">AVG</span> (average), <span class="path">MEDIAN</span>, or a formula such as <span class="path">(SUM - MAX - MIN) / (COUNT - 2)</span>, which drops the highest and lowest marks. <b>Members needed for this formula</b>: with fewer members marking, the plain average is used. The formula cannot change once any result in the stage is locked.</li>
         <li><b>Flag a member's total this far from the average</b> (optional): highlights unusual marks.</li>
+        <li><b>Switch off</b> a stage the course does not use this cycle (for example WAT, if it is not held). A switched-off stage takes no new panels and is left out of the schedule template, automatic allocation and the workflow. <span class="ui">Switch on</span> brings it back.</li>
         <li>For a later stage (e.g. PI): <b>Panel sees marks from earlier stages</b>, and <b>Minimum GD average to be sent here</b> (optional).</li>
     </ul>
     <figure class="shot tall"><div class="frame"><img src="img/stages.jpg" alt="Stages"></div><figcaption>Stages, criteria and settings</figcaption></figure>

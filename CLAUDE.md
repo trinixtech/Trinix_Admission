@@ -11,6 +11,7 @@ Interview-based admission (Main product, split from Trinix Admiso 0.8.0). Read `
   - GD/PI attendance and marks on phones (PI on a different panel, at the same venue after an in-person GD).
   - Admin lock; merit lists.
   - Installation wizard and Maintenance page.
+  - Dashboard: admission workflow per course and round (`WorkflowController`, live counts and next step); today's interviews for panel members.
 - The optional modules live in Trinix Admiso (repository `trinixtech/Trinix-Admiso`); do not add them here unless the user asks.
 - Releases: a version (workflow_dispatch input, e.g. `1.0.0`) builds the upload-ready ZIP and, with the `test-host` environment secrets, uploads it (`.github/workflows/release.yml`, `docs/DEPLOYMENT.md`).
 

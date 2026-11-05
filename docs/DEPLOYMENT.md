@@ -70,7 +70,7 @@ The upload replaces the code and deletes files a release no longer has. It **nev
    * * * * * /usr/local/bin/php /home/<user>/trinix-admission/artisan schedule:run >> /dev/null 2>&1
    ```
 
-   Use the PHP 8.3 path your host gives. Without Redis this cron also processes imports, document scans and emails, in up to 50 seconds of each minute. **Imports and emails do not move without it.** System → Health shows whether it runs.
+   The finish page works out the command-line PHP path (not php-fpm or lsphp) and has a Copy button; if your panel lists a different PHP 8.3 command, use that. Without Redis this cron also processes imports, document scans and emails, in up to 50 seconds of each minute. **Imports and emails do not move without it.** System → Health shows whether it runs.
 8. Sign in, set up two-factor sign-in, and follow the checklist on the finish page.
 
 ## 5. First data

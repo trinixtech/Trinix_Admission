@@ -55,7 +55,7 @@ jobs:
           echo "${{ steps.v.outputs.version }}" > VERSION
           mkdir -p dist
           zip -qr "dist/trinix-admission-${{ steps.v.outputs.version }}.zip" . \
-            -x '.git/*' '*/.git/*' 'node_modules/*' 'tests/*' '.github/*' 'docs/*' 'dist/*' 'database/seeders/DemoSeeder.php' \
+            -x '.git/*' '*/.git/*' 'node_modules/*' '.env.docker' 'Dockerfile' 'docker-compose.yml' 'docker/*' 'tests/*' '.github/*' 'docs/*' 'dist/*' 'database/seeders/DemoSeeder.php' \
                '.env' 'database/*.sqlite' 'storage/logs/*.log' 'storage/app/private/*' 'storage/e2e/*' \
                'storage/framework/cache/data/*' 'storage/framework/sessions/*' 'storage/framework/views/*.php' \
                'bootstrap/cache/config.php' 'bootstrap/cache/routes-*.php'
