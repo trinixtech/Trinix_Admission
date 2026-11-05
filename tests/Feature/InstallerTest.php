@@ -31,7 +31,7 @@ it('sends every page to the installer until the first Super Admin exists, then c
 
 it('tests the database before going on, and checks the site and email answers', function () {
     $this->post('/install', ['action' => 'test_database', 'db_driver' => 'mysql', 'db_host' => '127.0.0.1', 'db_port' => '1', 'db_database' => 'x', 'db_username' => 'x'])
-        ->assertOk()->assertSee('Could not connect');
+        ->assertOk()->assertSee('No database server answers');
     $this->post('/install', ['action' => 'test_database', 'db_driver' => 'sqlite', 'db_database' => tempnam(sys_get_temp_dir(), 'db')])
         ->assertOk()->assertSee('Connected to the database.')->assertSee('Site and email');
     $this->post('/install', ['action' => 'services', 'app_url' => 'not a url', 'mail_from_address' => 'x'])->assertOk()->assertSee('site address');
@@ -65,4 +65,23 @@ it('shows pending database updates to the IT Administrator and runs them only wi
     $this->postJson('/api/v1/system/maintenance/migrate', ['confirm' => 'MIGRATE', 'password' => 'wrong'])->assertStatus(422)->assertJsonValidationErrors('password');
     $this->postJson('/api/v1/system/maintenance/migrate', ['confirm' => 'MIGRATE', 'password' => 'it-admin-password-1'])->assertStatus(422)->assertJsonValidationErrors('confirm');
     $this->actingAs(userWithRole('admission_officer'))->getJson('/api/v1/system/maintenance')->assertForbidden();
+});
+
+it('explains database errors in plain words', function () {
+    $db = ['host' => 'localhost', 'port' => '3306', 'database' => 'acct_admission'];
+    expect(Installer::explainDatabaseError("SQLSTATE[HY000] [1045] Access denied for user 'x'@'localhost'", $db))->toStartWith('The user name or password is wrong')
+        ->and(Installer::explainDatabaseError('SQLSTATE[HY000] [1049] Unknown database', $db))->toContain('no database named "acct_admission"')
+        ->and(Installer::explainDatabaseError('SQLSTATE[HY000] [2002] Connection refused', $db))->toContain('localhost:3306')
+        ->and(Installer::explainDatabaseError('something else', $db))->toStartWith('Could not connect to the database.');
+});
+
+it('gives the cron job a command-line PHP, not the web server PHP', function () {
+    $dir = sys_get_temp_dir().'/php-'.uniqid();
+    mkdir("$dir/sbin", 0777, true);
+    mkdir("$dir/bin");
+    touch("$dir/bin/php");
+    chmod("$dir/bin/php", 0755);
+    expect(Installer::cliPhp('/usr/bin/php8.3'))->toBe('/usr/bin/php8.3')
+        ->and(Installer::cliPhp("$dir/sbin/php-fpm"))->toBe(realpath("$dir/bin/php"))
+        ->and(Installer::cliPhp('/nowhere/lsphp'))->not->toContain('lsphp');
 });

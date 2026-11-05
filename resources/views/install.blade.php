@@ -27,15 +27,23 @@
     table { width: 100%; border-collapse: collapse; } td { padding: 8px 4px; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
     td.hint { white-space: normal; min-width: 72px; }
     .ok { color: var(--ok); } .bad { color: var(--bad); } .warn { color: var(--warn); }
+    .brand { display: flex; align-items: center; gap: 12px; margin-top: 8px; } .brand h1 { margin: 0; }
+    .logo { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--brand); color: #fff; font-weight: 700; flex-shrink: 0; }
+    @media (prefers-color-scheme: dark) { .logo { color: #0f172a; } }
+    .steps li.done { color: var(--ok); border-color: var(--ok); }
+    fieldset { border: 1px solid var(--line); border-radius: 10px; padding: 4px 12px 12px; margin: 16px 0 0; } legend { font-weight: 600; padding: 0 4px; }
+    [hidden] { display: none !important; }
+    .cron { display: flex; gap: 8px; align-items: flex-start; } .cron pre { flex: 1; margin: 0; }
     pre { white-space: pre-wrap; font-size: 13px; max-height: 240px; overflow: auto; background: var(--bg); padding: 8px; border-radius: 8px; }
 </style>
 </head>
 <body>
 <main>
-    <h1>Install Trinix Admission</h1>
+    <div class="brand"><span class="logo" aria-hidden="true">TA</span><div><h1>Install Trinix Admission</h1><p class="muted" style="margin:0">Admission management · version {{ trim((string) @file_get_contents(base_path('VERSION'))) ?: 'development' }}</p></div></div>
     <p class="muted">Set up this server. Nothing is saved until the "Save settings" step. This page closes once the first Super Admin exists.</p>
     @php($names = ['check' => 'Check', 'database' => 'Database', 'site' => 'Site and email', 'services' => 'Storage and services', 'review' => 'Save', 'tables' => 'Tables', 'admin' => 'First admin', 'finish' => 'Finish'])
-    <ol class="steps">@foreach ($names as $k => $n)<li class="{{ $k === $step ? 'on' : '' }}">{{ $loop->iteration }}. {{ $n }}</li>@endforeach</ol>
+    @php($at = array_search($step, array_keys($names), true))
+    <ol class="steps" aria-label="Installation steps">@foreach ($names as $k => $n)<li class="{{ $k === $step ? 'on' : ($loop->index < $at ? 'done' : '') }}" @if ($k === $step) aria-current="step" @endif>{{ $loop->index < $at ? '✓' : $loop->iteration.'.' }} {{ $n }}</li>@endforeach</ol>
 
     @foreach ($problems as $p)<div class="alert bad" role="alert">{{ $p }}</div>@endforeach
     @if ($info)<div class="alert ok" role="status">{{ $info }}</div>@endif
@@ -111,22 +119,24 @@
                 <label for="storage">Private files (applicants' documents)</label>
                 <select id="storage" name="storage"><option value="local" @selected($a['storage'] === 'local')>A folder on this server</option><option value="s3" @selected($a['storage'] === 's3')>S3-compatible bucket (any provider)</option></select>
                 <p class="hint">With two or more app servers, use a bucket or a shared folder, so every server sees the same files.</p>
-                <div class="row">
+                <div class="row" data-show="storage=s3">
                     <div><label for="s3_bucket">Bucket</label><input id="s3_bucket" name="s3_bucket" value="{{ $a['s3_bucket'] }}"></div>
                     <div><label for="s3_region">Region</label><input id="s3_region" name="s3_region" value="{{ $a['s3_region'] }}"></div>
                     <div><label for="s3_key">Access key</label><input id="s3_key" name="s3_key" value="{{ $a['s3_key'] }}"></div>
                     <div><label for="s3_secret">Secret key</label><input id="s3_secret" type="password" name="s3_secret" value="{{ $a['s3_secret'] }}"></div>
                     <div><label for="s3_endpoint">Endpoint (not AWS)</label><input id="s3_endpoint" name="s3_endpoint" value="{{ $a['s3_endpoint'] }}" placeholder="https://storage.example.org"></div>
                 </div>
-                <label class="check"><input type="checkbox" name="redis" value="1" @checked($a['redis'])> Use Redis for sessions, cache and queues (needed with two or more app servers)</label>
-                <div class="row">
+                <label class="check"><input type="checkbox" id="redis" name="redis" value="1" @checked($a['redis'])> Use Redis for sessions, cache and queues (needed with two or more app servers)</label>
+                <p class="hint">Shared hosting usually has no Redis: leave this off; the database is used instead.</p>
+                <div class="row" data-show="redis">
                     <div><label for="redis_host">Redis host</label><input id="redis_host" name="redis_host" value="{{ $a['redis_host'] }}"></div>
                     <div><label for="redis_port">Redis port</label><input id="redis_port" name="redis_port" value="{{ $a['redis_port'] }}"></div>
                     <div><label for="redis_password">Redis password</label><input id="redis_password" type="password" name="redis_password" value="{{ $a['redis_password'] }}"></div>
                 </div>
                 <label for="scanner">Virus scanning of documents</label>
                 <select id="scanner" name="scanner"><option value="clamav" @selected($a['scanner'] === 'clamav')>ClamAV</option><option value="eicar" @selected($a['scanner'] === 'eicar')>Test mode (no real scanning; shown as a warning until changed)</option></select>
-                <div class="row">
+                <p class="hint" data-show="scanner=eicar">Fine for testing. Uploaded documents are not really scanned, and System → Health shows a warning until ClamAV is set up.</p>
+                <div class="row" data-show="scanner=clamav">
                     <div><label for="clamav_host">ClamAV host</label><input id="clamav_host" name="clamav_host" value="{{ $a['clamav_host'] }}"></div>
                     <div><label for="clamav_port">ClamAV port</label><input id="clamav_port" name="clamav_port" value="{{ $a['clamav_port'] }}"></div>
                 </div>
@@ -179,7 +189,7 @@
                 </ol>
                 <h3>Scheduled tasks (required)</h3>
                 <p>Add this cron job in the hosting control panel, to run <b>every minute</b>. It sends reminders, retries scans and, without Redis, also processes imports and emails:</p>
-                <pre>* * * * * {{ PHP_BINARY ?: 'php' }} {{ base_path('artisan') }} schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</pre>
+                <div class="cron"><pre id="cron">* * * * * {{ \App\Support\Installer::cliPhp() }} {{ base_path('artisan') }} schedule:run &gt;&gt; /dev/null 2&gt;&amp;1</pre><button type="button" class="secondary" data-copy="cron">Copy</button></div>
                 <p class="hint">If the panel shows a different PHP path, use the PHP 8.3 command it lists. System → Health shows whether the scheduler is running.</p>
                 <p class="hint">Later database updates: System → Maintenance (IT Administrator).</p>
                 <div class="actions"><a href="/login"><button type="button" class="primary">Go to sign-in</button></a></div>
@@ -187,5 +197,26 @@
         @endswitch
     </form>
 </main>
+<script>
+// Show only the fields that apply (without JavaScript every field stays visible).
+(function () {
+    var groups = document.querySelectorAll('[data-show]');
+    function update() {
+        groups.forEach(function (g) {
+            var rule = g.getAttribute('data-show').split('='), el = document.getElementById(rule[0]);
+            if (!el) return;
+            g.hidden = rule.length > 1 ? el.value !== rule[1] : !el.checked;
+        });
+    }
+    ['storage', 'redis', 'scanner'].forEach(function (id) { var el = document.getElementById(id); if (el) el.addEventListener('change', update); });
+    update();
+    document.querySelectorAll('[data-copy]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            var text = document.getElementById(b.getAttribute('data-copy')).textContent;
+            (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(function () { b.textContent = 'Copied'; }, function () { b.textContent = 'Select and copy'; });
+        });
+    });
+})();
+</script>
 </body>
 </html>

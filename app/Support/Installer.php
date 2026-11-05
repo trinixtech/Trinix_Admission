@@ -101,8 +101,52 @@ class Installer
 
             return null;
         } catch (Throwable $e) {
-            return 'Could not connect: '.Str::limit(preg_replace('/\s+/', ' ', $e->getMessage()), 200);
+            return self::explainDatabaseError($e->getMessage(), $db);
         }
+    }
+
+    /** A database error in plain words, with the server's own message after it. */
+    public static function explainDatabaseError(string $message, array $db): string
+    {
+        $detail = Str::limit(preg_replace('/\s+/', ' ', $message), 200);
+        $hint = match (true) {
+            str_contains($message, '[1045]') => 'The user name or password is wrong, or this user may not connect from this server. Check them in the hosting panel (MySQL Databases).',
+            str_contains($message, '[1044]'), str_contains($message, '[1142]') => 'The user has no rights on this database. In the hosting panel, add the user to the database with all privileges.',
+            str_contains($message, '[1049]') => "There is no database named \"{$db['database']}\". Create it in the hosting panel; on cPanel its name usually starts with your account name and an underscore.",
+            str_contains($message, '[2002]'), str_contains($message, '[2006]'), str_contains($message, 'timed out') => "No database server answers at {$db['host']}:{$db['port']}. On shared hosting the host is usually localhost.",
+            default => 'Could not connect to the database.',
+        };
+
+        return "$hint ($detail)";
+    }
+
+    /**
+     * The command-line PHP for the cron job. Under a web server PHP_BINARY can be php-fpm, lsphp or php-cgi,
+     * which cannot run artisan; look for the matching command-line php next to it.
+     */
+    public static function cliPhp(?string $binary = null): string
+    {
+        $binary ??= PHP_BINARY;
+        $name = basename((string) $binary);
+        if ($binary && preg_match('/^php(\d+(\.\d+)?)?$/', $name)) {
+            return $binary;
+        }
+        if ($binary) {
+            $dir = dirname($binary);
+            foreach ([$dir.'/php', dirname($dir).'/bin/php', $dir.'/../../bin/php'] as $candidate) {
+                if (is_file($candidate) && is_executable($candidate)) {
+                    return realpath($candidate) ?: $candidate;
+                }
+            }
+        }
+        $v = PHP_MAJOR_VERSION.PHP_MINOR_VERSION;
+        foreach (["/opt/cpanel/ea-php$v/root/usr/bin/php", "/opt/alt/php$v/usr/bin/php", '/usr/local/bin/php', '/usr/bin/php'] as $candidate) {
+            if (@is_file($candidate) && @is_executable($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return '/usr/local/bin/php';
     }
 
     /** Send a test email with the given settings, without saving them. @return string|null error message */
