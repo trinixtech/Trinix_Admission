@@ -2,6 +2,7 @@
 
 use App\Modules\Access\Http\Controllers\FacultyImportController;
 use App\Modules\Access\Http\Controllers\InvitationController;
+use App\Modules\Access\Http\Controllers\LoginSheetController;
 use App\Modules\Access\Http\Controllers\MeController;
 use App\Modules\Access\Http\Controllers\RoleController;
 use App\Modules\Access\Http\Controllers\UserController;
@@ -30,6 +31,7 @@ use App\Modules\Selection\Http\Controllers\EvaluationController;
 use App\Modules\Selection\Http\Controllers\PanelController;
 use App\Modules\Selection\Http\Controllers\ScheduleImportController;
 use App\Modules\Selection\Http\Controllers\StageController;
+use App\Modules\System\Http\Controllers\BackupController;
 use App\Modules\System\Http\Controllers\HealthController;
 use App\Modules\System\Http\Controllers\MaintenanceController;
 use App\Modules\System\Http\Controllers\SettingController;
@@ -86,6 +88,8 @@ Route::prefix('v1')->group(function () {
         // People
         Route::post('faculty-imports', [FacultyImportController::class, 'preview']);
         Route::post('faculty-imports/{token}/confirm', [FacultyImportController::class, 'confirm'])->where('token', '[0-9A-Za-z]{26}');
+        Route::get('users/login-sheet', [LoginSheetController::class, 'candidates']);
+        Route::post('users/login-sheet', [LoginSheetController::class, 'store']);
         Route::apiResource('users', UserController::class)->except('destroy');
         Route::post('users/{user}/suspend', [UserController::class, 'suspend']);
         Route::post('users/{user}/reactivate', [UserController::class, 'reactivate']);
@@ -213,6 +217,12 @@ Route::prefix('v1')->group(function () {
         Route::get('system/health', [HealthController::class, 'show']);
         Route::get('system/maintenance', [MaintenanceController::class, 'show']);
         Route::post('system/maintenance/migrate', [MaintenanceController::class, 'migrate']);
+        Route::get('system/backups', [BackupController::class, 'index']);
+        Route::put('system/backups/settings', [BackupController::class, 'updateSettings']);
+        Route::post('system/backups', [BackupController::class, 'store']);
+        Route::post('system/backups/upload', [BackupController::class, 'upload']);
+        Route::get('system/backups/{name}/download', [BackupController::class, 'download']);
+        Route::post('system/backups/{name}/restore', [BackupController::class, 'restore']);
         Route::get('system/settings', [SettingController::class, 'index']);
         Route::patch('system/settings/{setting}', [SettingController::class, 'update']);
     });

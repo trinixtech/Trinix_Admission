@@ -4,6 +4,7 @@ namespace App\Modules\System\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\System\Models\SystemSetting;
+use App\Modules\System\Services\BackupService;
 use App\Support\Settings;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\JsonResponse;
@@ -19,7 +20,7 @@ class SettingController extends Controller
             $this->access()->authorize($this->actor(), 'settings.technical');
         }
 
-        return response()->json(['data' => SystemSetting::orderBy('key')->get()->map(fn (SystemSetting $s) => [
+        return response()->json(['data' => SystemSetting::where('key', '!=', BackupService::SETTING)->orderBy('key')->get()->map(fn (SystemSetting $s) => [
             'key' => $s->key,
             'value' => $s->value,
             'description' => $s->description,
@@ -31,6 +32,7 @@ class SettingController extends Controller
 
     public function update(Request $request, SystemSetting $setting): JsonResponse
     {
+        abort_if($setting->key === BackupService::SETTING, 404);
         $actor = $this->actor();
         $allowed = $this->access()->can($actor, 'settings.manage')
             || ($setting->is_technical && $this->access()->can($actor, 'settings.technical'));

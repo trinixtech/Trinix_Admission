@@ -13,6 +13,7 @@ use App\Modules\Documents\Services\EicarScanner;
 use App\Modules\Imports\Console\Benchmark;
 use App\Modules\Imports\Console\MakeSampleFile;
 use App\Modules\Selection\Console\SendReminders;
+use App\Modules\System\Console\RunBackups;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -55,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SyncAccessCommand::class, MakeSampleFile::class, Benchmark::class, ScanPending::class, SendReminders::class]);
+            $this->commands([SyncAccessCommand::class, MakeSampleFile::class, Benchmark::class, ScanPending::class, SendReminders::class, RunBackups::class]);
         }
     }
 }

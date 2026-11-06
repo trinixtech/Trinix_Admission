@@ -73,6 +73,16 @@ class HealthCheck
                 return $scanner->name().' reachable. Pending scans: '.$pending;
             });
 
+        $backups = app(BackupService::class);
+        $latest = $backups->list()[0] ?? null;
+        $settings = $backups->settings();
+        $age = $latest ? now()->diffInHours($latest['created_at'], true) : null;
+        $checks['backups'] = [
+            'ok' => $settings['enabled'] && $latest !== null && $age <= 26,
+            'detail' => ! $settings['enabled'] ? 'Daily backups are off (System → Backups).'
+                : ($latest ? 'Last backup '.$latest['created_at'].' ('.BackupService::humanSize($latest['size']).'), '.count($backups->list()).' kept.' : 'No backup made yet.'),
+        ];
+
         return [
             'ok' => collect($checks)->every(fn ($c) => $c['ok']),
             'checks' => $checks,

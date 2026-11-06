@@ -26,6 +26,9 @@ $task('clear-password-resets', 'auth:clear-resets')->daily();
 // Documents that are still unscanned (e.g. the scanner was down) are queued again.
 $task('documents-scan-pending', 'documents:scan-pending')->everyFiveMinutes();
 
+// Backups: the daily backup (and the weekly full one) once the time set in System → Backups has passed.
+$task('backups', 'backups:run')->everyFifteenMinutes();
+
 // Interview reminders the day before, at 09:00 Indian time.
 $task('interview-reminders', 'interviews:send-reminders')->dailyAt('03:30');
 

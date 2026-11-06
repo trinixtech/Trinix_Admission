@@ -479,7 +479,7 @@ try {
     await meera.getByRole('textbox', { name: /Remarks/ }).fill('Clear reasoning on trade policy.');
     await expectText(meera, '✓ Saved');
     await shot(meera, '27-pi-marking-phone');
-    await meera.getByRole('button', { name: 'Submit marks', exact: true }).click();
+    await meera.getByRole('button', { name: /^Submit 24.5 \/ 30$/ }).click();
     await expectText(meera, 'Marks submitted.');
     await expectText(meera, '24.5');
     if (!piUrl) throw new Error('PI panel not created');
@@ -533,6 +533,47 @@ try {
     await page.getByRole('button', { name: 'Publish' }).click();
     await expectText(page, 'Published.');
     await shot(page, '31-merit-list-mobile');
+
+    step('People: a printed login sheet for a faculty member; at first sign-in he chooses his own password');
+    await page.goto(`${BASE}/people/users`);
+    await page.getByRole('button', { name: 'Login sheet' }).click();
+    const sheetDialog = page.getByRole('dialog');
+    await sheetDialog.getByRole('searchbox', { name: 'Search' }).fill('anil.kumar');
+    await sheetDialog.getByRole('checkbox', { name: /^All 1 shown/ }).waitFor();
+    await sheetDialog.getByRole('searchbox', { name: 'Search' }).fill('');
+    await sheetDialog.getByRole('checkbox', { name: /^All \d+ shown/ }).uncheck();
+    await sheetDialog.getByRole('checkbox', { name: /Anil Kumar/ }).check();
+    await sheetDialog.getByRole('button', { name: 'Make passwords for 1' }).click();
+    const tempPassword = (await sheetDialog.locator('code').first().textContent()).trim();
+    if (!/^[a-z2-9]{4}-[a-z2-9]{4}-[a-z2-9]{4}$/.test(tempPassword)) throw new Error(`Odd temporary password: ${tempPassword}`);
+    await shot(page, '30-login-sheet');
+    await sheetDialog.getByRole('button', { name: 'Close' }).last().click();
+    const anilCtx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+    const anil = await anilCtx.newPage();
+    await anil.goto(`${BASE}/login`);
+    await anil.getByLabel(label('Email')).fill('anil.kumar@example.test');
+    await anil.getByLabel(label('Password')).fill(tempPassword);
+    await anil.getByRole('button', { name: 'Sign in' }).click();
+    await expectText(anil, 'Welcome, Anil Kumar');
+    await anil.goto(`${BASE}/my-interviews`);
+    await expectText(anil, 'Welcome, Anil Kumar'); // nothing else opens until the password is changed
+    await anil.getByLabel(label('Password from the sheet')).fill(tempPassword);
+    await anil.getByLabel(label('Your new password')).fill('anil-chooses-his-own');
+    await anil.getByLabel(label('Repeat your new password')).fill('anil-chooses-his-own');
+    await anil.getByRole('button', { name: 'Save and continue' }).click();
+    await expectText(anil, 'Hello, Anil Kumar');
+
+    step('System: the Super Admin sets the backup password and makes an encrypted backup');
+    await page.goto(`${BASE}/system/backups`);
+    await expectText(page, 'No password yet');
+    await page.getByLabel(label('Backup password')).fill('a-long-backup-password');
+    await page.getByLabel(label('Repeat it')).fill('a-long-backup-password');
+    await page.getByRole('button', { name: 'Save password' }).click();
+    await expectText(page, 'A password is set.');
+    await page.getByRole('button', { name: 'Back up now' }).click();
+    await expectText(page, 'Backup made');
+    await expectText(page, 'Database');
+    await shot(page, '31-backups');
 
     step('Desktop layout');
     const desk = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, storageState: await ctx.storageState() });

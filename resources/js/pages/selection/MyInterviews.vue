@@ -72,18 +72,34 @@ onBeforeUnmount(() => Object.values(timers).forEach((t) => clearTimeout(t)));
 
 function total(c: any): string {
     const sum = screen.value.criteria.reduce((s: number, cr: any) => s + Math.round(Number(marks[c.uid]?.[cr.id] || 0) * 100), 0);
-    return (sum / 100).toFixed(2).replace(/\.00$/, '');
+    return String(Number((sum / 100).toFixed(2)));
 }
 function filled(c: any): boolean {
-    return screen.value.criteria.every((cr: any) => marks[c.uid]?.[cr.id] !== '' && marks[c.uid]?.[cr.id] != null);
+    return screen.value.criteria.every((cr: any) => marks[c.uid]?.[cr.id] !== '' && marks[c.uid]?.[cr.id] != null) && !invalid(c);
 }
+/** A mark outside 0..max or with more than two decimals; shown at once and never saved. */
+function bad(c: any, cr: any): string {
+    const v = marks[c.uid]?.[cr.id];
+    if (v === '' || v == null) return '';
+    if (!/^\d+(\.\d{1,2})?$/.test(String(v).trim())) return 'Use a number like 7 or 7.5';
+    return Number(v) > Number(cr.max_marks) ? `Most is ${Number(cr.max_marks)}` : '';
+}
+const invalid = (c: any) => screen.value.criteria.some((cr: any) => bad(c, cr));
+const pct = (c: any) => Math.min(100, Math.round((Number(total(c)) / Number(screen.value.stage.total_max || 1)) * 100));
+const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
+const done = (c: any) => c.mine?.status === 'submitted' || ['absent', 'cancelled', 'completed'].includes(c.status) || c.conflict;
+const open = reactive<Record<string, boolean>>({});
+const isOpen = (c: any) => open[c.uid] ?? !done(c);
+const slotDone = computed(() => (screen.value?.candidates ?? []).filter(done).length);
 
 function queueSave(c: any) {
     clearTimeout(timers[c.uid]);
+    if (invalid(c)) return;
     timers[c.uid] = window.setTimeout(() => save(c), 700);
 }
 async function save(c: any) {
     clearTimeout(timers[c.uid]);
+    if (invalid(c)) return;
     saving.value++;
     try {
         const payload = { marks: Object.fromEntries(Object.entries(marks[c.uid]).map(([k, v]) => [k, v === '' ? null : v])), remarks: remarks[c.uid] };
@@ -189,73 +205,84 @@ async function dialogSubmit(reason: string) {
     </template>
 
     <template v-if="screen">
-        <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span class="text-slate-600 dark:text-slate-400">{{ screen.stage.name }} · {{ screen.slot.time }} · out of {{ screen.stage.total_max }}</span>
-            <span aria-live="polite" class="font-medium text-green-700 dark:text-green-400">{{ saving ? 'Saving…' : savedAt ? `✓ Saved ${savedAt}` : '' }}</span>
+        <div class="sticky top-0 z-20 -mx-4 mb-3 flex items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 py-2 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+            <div class="min-w-0">
+                <p class="truncate font-semibold">{{ screen.stage.code }} · {{ screen.slot.time }}</p>
+                <p class="text-sm text-slate-600 dark:text-slate-400">{{ slotDone }} of {{ screen.candidates.length }} done · out of {{ Number(screen.stage.total_max) }}</p>
+            </div>
+            <span aria-live="polite" class="shrink-0 rounded-full px-3 py-1 text-sm font-medium" :class="saving ? 'bg-amber-100 text-amber-900 dark:bg-amber-900 dark:text-amber-100' : savedAt ? 'bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-100' : 'hidden'">
+                {{ saving ? 'Saving…' : `✓ Saved ${savedAt}` }}
+            </span>
         </div>
         <p v-if="!screen.candidates.length" class="card text-slate-600 dark:text-slate-400">No candidates in this slot.</p>
 
-        <section v-for="c in screen.candidates" :key="c.uid" class="card mb-3" :aria-label="c.application.name">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                    <h3 class="font-semibold">{{ c.application.name }}</h3>
-                    <p class="text-sm text-slate-600 dark:text-slate-400">
-                        {{ c.application.portal_application_no }} · {{ c.application.course }} ·
-                        <RouterLink :to="`/applications/${c.application.uid}`" class="btn-link">application</RouterLink>
-                    </p>
-                    <p v-for="p in c.previous" :key="p.stage" class="text-sm">{{ p.stage }} average: <b>{{ p.average }}</b></p>
-                </div>
-                <div class="text-right">
-                    <StatusBadge :status="c.mine?.status === 'submitted' ? 'submitted' : c.status" />
-                    <p v-if="c.can_mark && c.status === 'present'" class="text-sm font-semibold">{{ total(c) }} / {{ screen.stage.total_max }}</p>
-                </div>
-            </div>
+        <section v-for="c in screen.candidates" :key="c.uid" class="card mb-3 p-0" :aria-label="c.application.name">
+            <button type="button" class="flex w-full items-center gap-3 p-4 text-left" :aria-expanded="isOpen(c) ? 'true' : 'false'" @click="open[c.uid] = !isOpen(c)">
+                <span class="grid size-11 shrink-0 place-items-center rounded-full bg-brand-50 font-semibold text-brand-700 dark:bg-slate-800 dark:text-brand-100" aria-hidden="true">{{ initials(c.application.name) }}</span>
+                <span class="min-w-0 flex-1">
+                    <span class="block truncate font-semibold">{{ c.application.name }}</span>
+                    <span class="block truncate text-sm text-slate-600 dark:text-slate-400">{{ c.application.portal_application_no }} · {{ c.application.course }}</span>
+                </span>
+                <span class="shrink-0 text-right">
+                    <span v-if="c.can_mark && c.status === 'present'" class="block text-lg font-bold tabular-nums">{{ total(c) }}<span class="text-sm font-normal text-slate-500">/{{ Number(screen.stage.total_max) }}</span></span>
+                    <StatusBadge :status="c.conflict ? 'conflict' : c.mine?.status === 'submitted' ? 'submitted' : c.status" />
+                </span>
+            </button>
 
-            <div v-if="canMarkAttendance && ['scheduled', 'absent', 'present'].includes(c.status) && !c.mine" class="mt-2 flex gap-2">
-                <button type="button" class="btn-secondary" :aria-pressed="c.status === 'present' ? 'true' : 'false'" @click="attendance(c, true)">Present</button>
-                <button type="button" class="btn-secondary" :aria-pressed="c.status === 'absent' ? 'true' : 'false'" @click="attendance(c, false)">Absent</button>
-            </div>
-            <p v-if="c.conflict" class="mt-2 text-sm">You declared a conflict of interest; you do not mark this candidate.</p>
-            <p v-else-if="c.status === 'scheduled'" class="mt-2 text-sm text-slate-600 dark:text-slate-400">Marks open once the candidate is marked present.</p>
+            <div v-if="isOpen(c)" class="border-t border-slate-100 p-4 pt-3 dark:border-slate-800">
+                <p v-for="p in c.previous" :key="p.stage" class="mb-2 text-sm">{{ p.stage }} average: <b>{{ p.average }}</b></p>
+                <RouterLink :to="`/applications/${c.application.uid}`" class="btn-link -ml-1 mb-1 inline-flex min-h-11 items-center text-sm">Open application</RouterLink>
 
-            <template v-if="c.can_mark && c.status === 'present'">
-                <Alert v-if="c.mine?.reopen_reason && c.mine.status === 'reopened'" tone="warning">Reopened: {{ c.mine.reopen_reason }}</Alert>
-                <div :class="isGroup ? 'mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4' : 'mt-3 space-y-3'">
-                    <div v-for="cr in screen.criteria" :key="cr.id">
-                        <label :for="`m-${c.uid}-${cr.id}`" class="label">{{ cr.name }} <span class="font-normal text-slate-600 dark:text-slate-400">/ {{ Number(cr.max_marks) }}</span></label>
-                        <div class="flex items-center gap-1">
-                            <button v-if="!isGroup" type="button" class="btn-secondary w-12 px-0" :disabled="c.mine?.status === 'submitted'" :aria-label="`${cr.name} minus 0.5`" @click="step(c, cr, -0.5)">−</button>
-                            <input
-                                :id="`m-${c.uid}-${cr.id}`" v-model="marks[c.uid][cr.id]" class="input text-center text-lg" inputmode="decimal" placeholder="–"
-                                :disabled="c.mine?.status === 'submitted'" @input="queueSave(c)" @blur="save(c)"
-                            />
-                            <button v-if="!isGroup" type="button" class="btn-secondary w-12 px-0" :disabled="c.mine?.status === 'submitted'" :aria-label="`${cr.name} plus 0.5`" @click="step(c, cr, 0.5)">+</button>
+                <div v-if="canMarkAttendance && ['scheduled', 'absent', 'present'].includes(c.status) && !c.mine" class="mb-3 grid grid-cols-2 overflow-hidden rounded-lg border border-slate-300 dark:border-slate-600" role="group" aria-label="Attendance">
+                    <button type="button" class="min-h-12 font-semibold" :class="c.status === 'present' ? 'bg-green-600 text-white' : 'bg-white dark:bg-slate-900'" :aria-pressed="c.status === 'present' ? 'true' : 'false'" @click="attendance(c, true)">Present</button>
+                    <button type="button" class="min-h-12 border-l border-slate-300 font-semibold dark:border-slate-600" :class="c.status === 'absent' ? 'bg-red-600 text-white' : 'bg-white dark:bg-slate-900'" :aria-pressed="c.status === 'absent' ? 'true' : 'false'" @click="attendance(c, false)">Absent</button>
+                </div>
+                <p v-if="c.conflict" class="text-sm">You declared a conflict of interest; you do not mark this candidate.</p>
+                <p v-else-if="c.status === 'scheduled'" class="text-sm text-slate-600 dark:text-slate-400">Marks open once the candidate is marked present.</p>
+
+                <template v-if="c.can_mark && c.status === 'present'">
+                    <Alert v-if="c.mine?.reopen_reason && c.mine.status === 'reopened'" tone="warning">Reopened: {{ c.mine.reopen_reason }}</Alert>
+                    <div class="mb-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800" aria-hidden="true"><div class="h-full rounded-full bg-brand-600 transition-all dark:bg-brand-100" :style="{ width: pct(c) + '%' }" /></div>
+                    <div class="space-y-3">
+                        <div v-for="cr in screen.criteria" :key="cr.id" class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
+                            <label :for="`m-${c.uid}-${cr.id}`" class="font-medium">{{ cr.name }} <span class="font-normal text-slate-500 dark:text-slate-400">/ {{ Number(cr.max_marks) }}</span></label>
+                            <div class="flex items-center gap-1">
+                                <button type="button" class="btn-secondary size-11 px-0 text-xl" :disabled="c.mine?.status === 'submitted'" :aria-label="`${cr.name} minus 0.5`" @click="step(c, cr, -0.5)">−</button>
+                                <input
+                                    :id="`m-${c.uid}-${cr.id}`" v-model="marks[c.uid][cr.id]" class="input w-20 text-center text-xl font-semibold tabular-nums" inputmode="decimal" placeholder="–"
+                                    :class="bad(c, cr) ? 'border-red-600 ring-1 ring-red-600' : ''" :aria-invalid="bad(c, cr) ? 'true' : 'false'"
+                                    :aria-describedby="bad(c, cr) ? `e-${c.uid}-${cr.id}` : undefined" :disabled="c.mine?.status === 'submitted'" @input="queueSave(c)" @blur="save(c)"
+                                />
+                                <button type="button" class="btn-secondary size-11 px-0 text-xl" :disabled="c.mine?.status === 'submitted'" :aria-label="`${cr.name} plus 0.5`" @click="step(c, cr, 0.5)">+</button>
+                            </div>
+                            <p v-if="bad(c, cr)" :id="`e-${c.uid}-${cr.id}`" class="col-span-2 text-right text-sm text-red-700 dark:text-red-400">{{ bad(c, cr) }}</p>
                         </div>
                     </div>
-                </div>
-                <div v-if="screen.stage.remark_rule?.required !== 'never'" class="mt-3">
-                    <label :for="`r-${c.uid}`" class="label">Remarks<span v-if="screen.stage.remark_rule?.required === 'always'" class="text-red-700" aria-hidden="true"> *</span></label>
-                    <textarea :id="`r-${c.uid}`" v-model="remarks[c.uid]" class="input min-h-20 py-2" :disabled="c.mine?.status === 'submitted'" @input="queueSave(c)"></textarea>
-                </div>
-                <p v-if="fieldErr[c.uid]" class="mt-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ fieldErr[c.uid] }}</p>
-                <button v-if="!isGroup && c.mine?.status !== 'submitted'" type="button" class="btn-primary mt-3 w-full" :disabled="!filled(c)" @click="submit([c])">Submit marks</button>
-            </template>
-            <button v-if="!c.conflict && c.can_mark && c.status !== 'completed' && !c.mine" type="button" class="btn-link mt-2 text-sm" @click="dialog = { kind: 'conflict', target: c }">Declare a conflict of interest</button>
+                    <div v-if="screen.stage.remark_rule?.required !== 'never'" class="mt-3">
+                        <label :for="`r-${c.uid}`" class="label">Remarks<span v-if="screen.stage.remark_rule?.required === 'always'" class="text-red-700" aria-hidden="true"> *</span></label>
+                        <textarea :id="`r-${c.uid}`" v-model="remarks[c.uid]" class="input min-h-20 py-2" :disabled="c.mine?.status === 'submitted'" @input="queueSave(c)"></textarea>
+                    </div>
+                    <p v-if="fieldErr[c.uid]" class="mt-2 text-sm text-red-700 dark:text-red-400" role="alert">{{ fieldErr[c.uid] }}</p>
+                    <button v-if="!isGroup && c.mine?.status !== 'submitted'" type="button" class="btn-primary mt-4 min-h-12 w-full text-lg" :disabled="!filled(c)" @click="submit([c])">Submit {{ total(c) }} / {{ Number(screen.stage.total_max) }}</button>
+                    <p v-if="c.mine?.status === 'submitted'" class="mt-3 text-sm text-slate-600 dark:text-slate-400">Submitted. Only the chair or the admission office can reopen it.</p>
+                </template>
+                <button v-if="!c.conflict && c.can_mark && c.status !== 'completed' && !c.mine" type="button" class="btn-link mt-2 text-sm" @click="dialog = { kind: 'conflict', target: c }">Declare a conflict of interest</button>
 
-            <div v-if="c.result" class="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700">
-                <p>Result <b>{{ c.result.average ?? '—' }}</b><template v-if="c.result.rule && c.result.rule !== 'AVG'"> ({{ c.result.rule }}; plain average {{ c.result.plain_average }})</template> from {{ c.result.evaluators.length }} of {{ c.expected }} panel members<template v-if="c.result.locked"> · locked</template></p>
-                <ul class="mt-1">
-                    <li v-for="e in c.result.evaluators" :key="e.evaluator.uid" class="flex min-h-11 items-center justify-between gap-2">
-                        <span>{{ e.evaluator.name }}: {{ e.total }} <span v-if="e.outlier" class="font-semibold text-amber-700 dark:text-amber-400">(differs from the average)</span></span>
-                        <button v-if="isChair" type="button" class="btn-link" @click="dialog = { kind: 'reopen', target: e.uid }">Reopen</button>
-                    </li>
-                </ul>
+                <div v-if="c.result" class="mt-3 border-t border-slate-200 pt-3 text-sm dark:border-slate-700">
+                    <p>Result <b>{{ c.result.average ?? '—' }}</b><template v-if="c.result.rule && c.result.rule !== 'AVG'"> ({{ c.result.rule }}; plain average {{ c.result.plain_average }})</template> from {{ c.result.evaluators.length }} of {{ c.expected }} panel members<template v-if="c.result.locked"> · locked</template></p>
+                    <ul class="mt-1">
+                        <li v-for="e in c.result.evaluators" :key="e.evaluator.uid" class="flex min-h-11 items-center justify-between gap-2">
+                            <span>{{ e.evaluator.name }}: {{ e.total }} <span v-if="e.outlier" class="font-semibold text-amber-700 dark:text-amber-400">(differs from the average)</span></span>
+                            <button v-if="isChair" type="button" class="btn-link" @click="dialog = { kind: 'reopen', target: e.uid }">Reopen</button>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </section>
 
-        <div v-if="isGroup && markable.length" class="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 p-4 dark:border-slate-700 dark:bg-slate-900/95">
-            <p class="mb-2 text-sm"><b>{{ markable.filter(filled).length }} of {{ markable.length }}</b> fully marked</p>
-            <button type="button" class="btn-primary w-full" :disabled="!markable.filter(filled).length" @click="submit(markable.filter(filled))">Submit marks for this group</button>
+        <div v-if="isGroup && markable.length" class="sticky bottom-0 -mx-4 border-t border-slate-200 bg-white/95 p-4 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+            <div class="mb-2 flex items-center justify-between text-sm"><span><b>{{ markable.filter(filled).length }} of {{ markable.length }}</b> ready to submit</span><span v-if="markable.some(invalid)" class="text-red-700 dark:text-red-400">Fix the marks in red</span></div>
+            <button type="button" class="btn-primary min-h-12 w-full text-lg" :disabled="!markable.filter(filled).length" @click="submit(markable.filter(filled))">Submit marks for this group</button>
         </div>
     </template>
 

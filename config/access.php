@@ -25,6 +25,8 @@ return [
         'settings.technical' => ['System', 'Edit technical system settings'],
         'system.health' => ['System', 'View system health'],
         'system.maintain' => ['System', 'See pending database updates and run them (Maintenance)'],
+        'backups.manage' => ['System', 'Make, download and schedule backups (they hold all applicant data)'],
+        'backups.restore' => ['System', 'Restore the database from a backup'],
         'imports.view' => ['Imports', 'View import batches, previews and error reports'],
         'imports.manage' => ['Imports', 'Upload, map, validate, exclude rows and cancel import batches'],
         'imports.approve' => ['Imports', 'Approve an import batch for writing (never one you uploaded)'],

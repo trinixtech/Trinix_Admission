@@ -32,6 +32,7 @@ export const useAuth = defineStore('auth', {
     getters: {
         signedIn: (s) => s.me !== null,
         needsTwoFactorSetup: (s) => !!s.me && s.me.requires_two_factor && !s.me.two_factor_enabled,
+        needsPasswordChange: (s) => !!s.me && s.me.must_change_password,
     },
     actions: {
         can(permission: string): boolean {

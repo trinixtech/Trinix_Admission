@@ -83,11 +83,12 @@ export const NAV: NavGroup[] = [
         key: 'system',
         label: 'System',
         icon: 'cog',
-        hint: 'Audit log, health, settings and maintenance',
+        hint: 'Audit log, health, backups, settings and maintenance',
         items: [
             { to: '/audit', label: 'Audit log', perm: ['audit.view'] },
             { to: '/system/health', label: 'System health', perm: ['system.health'] },
             { to: '/system/settings', label: 'Settings', perm: ['settings.manage', 'settings.technical'] },
+            { to: '/system/backups', label: 'Backups', perm: ['backups.manage'] },
             { to: '/system/maintenance', label: 'Maintenance', perm: ['system.maintain'] },
         ],
     },

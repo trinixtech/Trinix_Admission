@@ -54,6 +54,7 @@ const routes: RouteRecordRaw[] = [
 
     { path: '/audit', component: () => import('@/pages/AuditLog.vue'), meta: { permission: 'audit.view', title: 'Audit log' } },
     { path: '/system/health', component: () => import('@/pages/system/Health.vue'), meta: { permission: 'system.health', title: 'System health' } },
+    { path: '/system/backups', component: () => import('@/pages/system/Backups.vue'), meta: { permission: 'backups.manage', title: 'Backups' } },
     { path: '/system/maintenance', component: () => import('@/pages/system/Maintenance.vue'), meta: { permission: 'system.maintain', title: 'Maintenance' } },
     { path: '/system/settings', component: () => import('@/pages/system/Settings.vue'), meta: { permission: ['settings.manage', 'settings.technical'], title: 'Settings' } },
 
@@ -73,6 +74,7 @@ router.beforeEach(async (to) => {
     if (to.meta.public) return true;
     if (to.meta.guest) return auth.signedIn ? '/' : true;
     if (!auth.signedIn) return { path: '/login', query: to.fullPath !== '/' ? { next: to.fullPath } : {} };
+    if (auth.needsPasswordChange && to.path !== '/account') return { path: '/account', query: { setup: 'password' } };
     if (auth.needsTwoFactorSetup && to.path !== '/account') return { path: '/account', query: { setup: 'two-factor' } };
 
     const need = to.meta.permission;

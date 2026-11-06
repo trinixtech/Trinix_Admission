@@ -9,6 +9,7 @@ import Pager from '@/components/Pager.vue';
 import StatusBadge from '@/components/StatusBadge.vue';
 import AssignmentFields from '@/components/AssignmentFields.vue';
 import FacultyImport from '@/components/FacultyImport.vue';
+import LoginSheet from '@/components/LoginSheet.vue';
 import { api, errorMessage, fieldErrors } from '@/lib/api';
 import { dateTime } from '@/lib/format';
 import { useScopeOptions } from '@/lib/options';
@@ -17,6 +18,7 @@ import { useAuth } from '@/stores/auth';
 const auth = useAuth();
 const router = useRouter();
 const opts = useScopeOptions();
+const sheetOpen = ref(false);
 const rows = ref<any[]>([]);
 const page = reactive({ current: 1, last: 1, total: 0 });
 const filters = reactive({ q: '', status: '', role: '' });
@@ -73,6 +75,7 @@ async function invite() {
 
 <template>
     <PageHeader title="Users" subtitle="People who can sign in. Applicants never have accounts.">
+        <button v-if="auth.can('users.manage')" type="button" class="btn-secondary" @click="sheetOpen = true">Login sheet</button>
         <button v-if="auth.can('users.manage')" type="button" class="btn-secondary" @click="importing = true">Import faculty</button>
         <button v-if="auth.can('users.manage')" type="button" class="btn-primary" @click="startInvite">Invite user</button>
     </PageHeader>
@@ -117,4 +120,5 @@ async function invite() {
         </form>
     </Modal>
     <FacultyImport :open="importing" @close="importing = false" @done="load(1)" />
+    <LoginSheet :open="sheetOpen" @close="sheetOpen = false; load()" />
 </template>
