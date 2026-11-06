@@ -109,11 +109,19 @@ class BackupService
     public function create(string $kind = 'db', ?User $actor = null, string $trigger = 'manual'): array
     {
         @set_time_limit(0);
+        if (! class_exists(ZipArchive::class)) {
+            throw new RuntimeException('The PHP extension zip is not enabled on this server (cPanel → Select PHP Version → Extensions).');
+        }
         $password = $this->password();
+        $dir = self::dir();
+        if (! is_dir($dir) || ! is_writable($dir)) {
+            throw new RuntimeException("The backup folder cannot be written: $dir. In File Manager, give storage/app the permission 755 (or 775).");
+        }
         $stamp = now(config('app.display_timezone', 'Asia/Kolkata'))->format('Ymd-His');
         $name = "trinix-admission-$kind-$stamp".($trigger === 'safety' ? '-before-restore' : '').'.zip';
         $path = self::dir()."/$name";
-        $sql = tempnam(sys_get_temp_dir(), 'bk');
+        // The server's temporary folder may be shared or too small on hosting; use the app's own storage.
+        $sql = tempnam(storage_path('app'), 'bk') ?: tempnam(sys_get_temp_dir(), 'bk');
 
         try {
             $fh = fopen($sql, 'wb');
@@ -126,7 +134,11 @@ class BackupService
             }
             $zip->setPassword($password);
             $zip->addFile($sql, 'database.sql');
-            $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256);
+            if (! $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256)) {
+                $zip->close();
+                @unlink($path);
+                throw new RuntimeException('This server\'s ZIP library cannot encrypt files (libzip without AES), so no backup was made: backups are never stored unencrypted. Ask the hosting company to enable AES encryption in PHP zip (libzip 1.2 or newer with crypto).');
+            }
             $zip->addFromString('README.txt', "Trinix Admission backup ($kind), ".now()->toIso8601String().".\nOpen with the backup password. Restore from System → Backups, or import database.sql with phpMyAdmin.\n");
             if ($kind === 'full') {
                 $disk = Storage::disk('private');
@@ -138,7 +150,8 @@ class BackupService
                 }
             }
             if (! $zip->close()) {
-                throw new RuntimeException('Could not write the backup file.');
+                @unlink($path);
+                throw new RuntimeException('Could not write the backup file ('.$zip->getStatusString().'). Check the free disk space in cPanel.');
             }
         } finally {
             @unlink($sql);

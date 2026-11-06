@@ -7,6 +7,7 @@ use App\Modules\System\Services\BackupService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -54,9 +55,18 @@ class BackupController extends Controller
 
         return $this->guard(function () use ($data) {
             $info = $this->backups->create($data['kind'], $this->actor());
-            $sent = ($data['email'] ?? false) && $data['kind'] === 'db' ? $this->backups->email($info, $this->actor()) : 0;
+            $made = 'Backup made ('.BackupService::humanSize($info['size']).')';
+            if (! (($data['email'] ?? false) && $data['kind'] === 'db')) {
+                return response()->json(['data' => $info, 'message' => "$made."], 201);
+            }
+            try {
+                $sent = $this->backups->email($info, $this->actor());
+            } catch (\Throwable $e) {
+                // The backup is safe on the server; only the email failed (usually the SMTP settings).
+                return response()->json(['data' => $info, 'message' => "$made, but the email could not be sent: ".class_basename($e).'. Check the mail settings (System → Health, or send a test email). The backup can be downloaded below.'], 201);
+            }
 
-            return response()->json(['data' => $info, 'message' => 'Backup made ('.BackupService::humanSize($info['size']).')'.($sent ? " and emailed to $sent ".($sent === 1 ? 'address' : 'addresses') : '').'.'], 201);
+            return response()->json(['data' => $info, 'message' => $made.($sent ? " and emailed to $sent ".($sent === 1 ? 'address' : 'addresses') : ' (no email addresses set, so not emailed)').'.'], 201);
         });
     }
 
@@ -104,6 +114,9 @@ class BackupController extends Controller
             return $fn();
         } catch (RuntimeException $e) {
             $this->fail($field, $e->getMessage());
+        } catch (\Throwable $e) {
+            report($e);
+            $this->fail($field, 'The backup stopped: '.class_basename($e).' ('.Str::limit($e->getMessage(), 160).'). See storage/logs/laravel.log.');
         }
     }
 

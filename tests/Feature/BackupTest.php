@@ -7,6 +7,7 @@ use App\Modules\System\Services\BackupService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Symfony\Component\Mailer\Exception\TransportException;
 
 beforeEach(function () {
     $this->dir = storage_path('framework/testing/backups-'.uniqid());
@@ -152,4 +153,13 @@ it('shows backups on System Health', function () {
     $this->actingAs($this->admin)->putJson('/api/v1/system/backups/settings', ['password' => 'a-long-backup-password', 'password_confirmation' => 'a-long-backup-password', 'enabled' => true])->assertOk();
     app(BackupService::class)->create('db');
     $this->getJson('/api/v1/system/health')->assertOk()->assertJsonPath('data.checks.backups.ok', true);
+});
+
+it('keeps the backup and says so when only the email fails', function () {
+    backupPassword($this);
+    $this->putJson('/api/v1/system/backups/settings', ['emails' => ['it@example.test']])->assertOk();
+    Mail::shouldReceive('to')->andThrow(new TransportException('Connection refused'));
+    $r = $this->postJson('/api/v1/system/backups', ['kind' => 'db', 'email' => true])->assertCreated();
+    expect($r->json('message'))->toContain('Backup made')->toContain('email could not be sent')
+        ->and(app(BackupService::class)->list())->toHaveCount(1);
 });
