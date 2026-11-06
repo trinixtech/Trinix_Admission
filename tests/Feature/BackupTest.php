@@ -60,7 +60,7 @@ it('makes an encrypted backup that cannot be read without the password', functio
     $zip->setPassword('a-long-backup-password');
     $sql = $zip->getFromName('database.sql');
     $zip->close();
-    expect($sql)->toStartWith('-- trinix-admission-backup ')->toContain('INSERT INTO "users"')->not->toContain('INSERT INTO "sessions"');
+    expect($sql)->toStartWith('-- trinix-admission-backup ')->toMatch('/INSERT INTO [`"]users[`"]/')->not->toMatch('/INSERT INTO [`"]sessions[`"]/');
 
     $this->get('/api/v1/system/backups/'.$info['name'].'/download')->assertOk()->assertDownload($info['name']);
     $this->get('/api/v1/system/backups/../../.env/download')->assertNotFound();
