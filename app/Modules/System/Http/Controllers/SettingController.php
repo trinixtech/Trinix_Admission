@@ -41,6 +41,15 @@ class SettingController extends Controller
         }
 
         $default = config("access.settings.{$setting->key}.0");
+        if ($setting->key === 'import_categories') {
+            $data = $request->validate(['value' => ['required', 'array', 'min:1', 'max:30'], 'value.*' => ['string', 'regex:/^[A-Za-z0-9][A-Za-z0-9\-]{0,15}$/']],
+                ['value.*.regex' => 'Use short codes: letters, numbers and -, at most 16 characters (e.g. KM, OBC-NCL).']);
+            $codes = array_values(array_unique(array_map(fn ($c) => strtoupper(trim($c)), $data['value'])));
+            DB::transaction(fn () => $this->audit()->update('setting.updated', $setting, ['value' => $codes, 'updated_by' => $actor->id]));
+            Settings::forget();
+
+            return $this->index();
+        }
         if (is_array($default)) {
             $data = $request->validate(['value' => ['present', 'array', 'max:50'], 'value.*' => ['string', 'max:253', 'regex:/^(\*\.)?[a-z0-9]([a-z0-9\-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9\-]*[a-z0-9])?)+$/i']],
                 ['value.*.regex' => 'Use host names such as portal.example.org or *.example.org.']);

@@ -2,6 +2,7 @@
 
 namespace App\Modules\Imports\Services;
 
+use App\Support\Settings;
 use DateTimeImmutable;
 use DateTimeInterface;
 
@@ -149,7 +150,9 @@ class RowNormalizer
     /** @return array{0: mixed, 1: ?string} */
     private function normalizeValue(array $def, mixed $value): array
     {
-        $s = is_string($value) ? trim($value) : (is_scalar($value) ? (string) $value : null);
+        // Portal exports copied from web pages often carry non-breaking spaces, zero-width characters or a BOM.
+        $s = is_string($value) ? trim(preg_replace('/[\x{00A0}\x{2007}\x{202F}]/u', ' ', preg_replace('/[\x{200B}-\x{200D}\x{2060}\x{FEFF}]/u', '', $value)))
+            : (is_scalar($value) ? (string) $value : null);
         if ($s === null) {
             return [null, 'Unreadable value.'];
         }
@@ -163,7 +166,7 @@ class RowNormalizer
             'date' => $this->date($s),
             'year' => preg_match('/^(19|20)\d{2}$/', $s) ? [(int) $s, null] : [null, 'Not a valid year.'],
             'gender' => $this->option($s, config('import.genders')),
-            'category' => $this->option($s, config('import.categories')),
+            'category' => $this->option($s, Settings::get('import_categories', config('import.categories'))),
             'exam' => $this->option($s, config('import.exams')),
             'marks_type' => $this->option($s, ['percentage', 'cgpa']),
             'bool' => $this->bool($s),
@@ -191,9 +194,11 @@ class RowNormalizer
 
     private function date(string $s): array
     {
-        foreach (['Y-m-d', 'd-m-Y', 'd/m/Y', 'd.m.Y', 'Y/m/d'] as $format) {
+        // Numbers (22-11-2000, 2000-11-22) and month names (22-Nov-2000, 22 November 2000), the way portals print them.
+        $s = preg_replace('/\s+/', ' ', $s);
+        foreach (['Y-m-d', 'd-m-Y', 'd/m/Y', 'd.m.Y', 'Y/m/d', 'j-n-Y', 'j/n/Y', 'd-M-Y', 'j-M-Y', 'd M Y', 'j M Y', 'd/M/Y', 'd-F-Y', 'j-F-Y', 'd F Y', 'j F Y', 'M j, Y', 'F j, Y'] as $format) {
             $d = DateTimeImmutable::createFromFormat('!'.$format, $s);
-            if ($d && $d->format($format) === $s) {
+            if ($d && strcasecmp($d->format($format), $s) === 0) {
                 $year = (int) $d->format('Y');
 
                 return $year >= 1940 && $d <= new DateTimeImmutable('today')
@@ -205,7 +210,7 @@ class RowNormalizer
             return [(new DateTimeImmutable('1899-12-30'))->modify("+{$s} days")->format('Y-m-d'), null];
         }
 
-        return [null, 'Not a valid date (use DD-MM-YYYY or YYYY-MM-DD).'];
+        return [null, 'Not a valid date (use e.g. 22-11-2000, 22-Nov-2000 or 2000-11-22).'];
     }
 
     private function option(string $s, array $options): array

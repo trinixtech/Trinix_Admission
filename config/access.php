@@ -131,5 +131,6 @@ return [
         'invitation_expiry_hours' => [72, 'Hours an invitation link stays valid', true],
         'support_email' => [null, 'Email address shown to users who need help', false],
         'document_url_hosts' => [[], 'Websites documents may be downloaded from (host names, e.g. portal.example.org)', true],
+        'import_categories' => [['GEN', 'SC', 'ST', 'OBC-NCL', 'EWS'], 'Category codes accepted in student imports, e.g. add KM for Kashmiri Migrant. In each import, map the portal\'s wording to one of these codes.', false],
     ],
 ];

@@ -8,6 +8,7 @@ use App\Modules\Merit\Models\MeritFormula;
 use App\Modules\Selection\Models\InterviewCandidate;
 use App\Modules\Selection\Services\EvaluationService;
 use App\Modules\Selection\Services\RoundCandidates;
+use App\Support\Settings;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 
@@ -34,7 +35,7 @@ class MeritEngine
     /** The admin's vertical categories (Phase 6), or the defaults until they are set up. */
     public static function categories(): array
     {
-        return config('import.categories') ?: self::CATEGORIES;
+        return Settings::get('import_categories', config('import.categories')) ?: self::CATEGORIES;
     }
 
     // ----- Definition --------------------------------------------------------------------------

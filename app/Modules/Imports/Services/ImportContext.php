@@ -33,9 +33,21 @@ class ImportContext
         $this->batchCourseCode = $batch->course?->code;
         $this->courses = Course::all()->keyBy(fn ($c) => strtoupper($c->code))->all();
         $this->branches = [];
-        foreach (Branch::all() as $b) {
+        // A campus is found by its code or name, or (when only one campus fits) by its name without the word
+        // "campus" or its city, so that "Delhi" finds "Delhi Campus" in New Delhi.
+        $loose = [];
+        foreach (Branch::with('location:id,city')->get() as $b) {
             $this->branches[strtoupper($b->code)] = $b->id;
             $this->branches[strtoupper($b->name)] = $b->id;
+            $short = strtoupper(trim(preg_replace('/\bcampus\b/i', '', $b->name), " \t-,"));
+            foreach (array_filter([$short, strtoupper(trim((string) $b->location?->city))]) as $k) {
+                $loose[$k][$b->id] = true;
+            }
+        }
+        foreach ($loose as $k => $ids) {
+            if (count($ids) === 1 && ! isset($this->branches[$k])) {
+                $this->branches[$k] = array_key_first($ids);
+            }
         }
         $this->offered = array_fill_keys(DB::table('course_offerings')
             ->join('branch_courses', 'branch_courses.id', '=', 'course_offerings.branch_course_id')

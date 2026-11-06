@@ -7,9 +7,12 @@ use App\Modules\Imports\Console\MakeSampleFile;
 use App\Modules\Imports\Models\ImportBatch;
 use App\Modules\Imports\Models\ImportRecord;
 use App\Modules\Imports\Services\ImportPipeline;
+use App\Modules\Merit\Services\MeritEngine;
 use App\Modules\Organisation\Models\BranchCourse;
 use App\Modules\Organisation\Models\Course;
+use App\Modules\Organisation\Models\Location;
 use App\Support\Scope;
+use App\Support\Settings;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use OpenSpout\Common\Entity\Row;
@@ -353,4 +356,38 @@ it('recovers when another batch writes the same new applicants between approval 
     $b->refresh();
     expect($b->status)->toBe('completed')->and($b->rows_written)->toBe(3)->and(Application::count())->toBe(3)
         ->and(Application::first()->participations()->count())->toBe(2);
+});
+
+it('reads portal-style dates, cleans invisible characters, and finds a campus by short name or city', function () {
+    $this->w->a->update(['name' => 'Delhi Campus']);
+    $loc = Location::create(['institution_id' => $this->w->institution->id, 'code' => 'KOL', 'name' => 'Kolkata campus', 'city' => 'Kolkata', 'address' => 'Joka']);
+    $this->w->b->update(['location_id' => $loc->id]);
+    $rows = implode("\n", [
+        "PRTMNEW0001,MBA(IB),Pooja Arora,CAT90000101,80,\u{00A0}pooja@example.test\u{200B},9000000201,22-Nov-2000,F,General,No,73.33,98,90,B.Tech,0,Delhi,Kolkata,",
+        'PRTMNEW0002,MBA(IB),Ravi Kumar,CAT90000102,80,ravi@example.test,9000000202,5 March 2001,M,General,No,70,70,70,B.Com,0,,,',
+    ])."\n";
+    $batch = stageSample($this, ['--rows' => 0, '--start' => 700], append: $rows);
+    $errors = $this->actingAs($this->officer)->getJson("/api/v1/import-batches/{$batch->uid}/errors?per_page=100")->json('data');
+    expect($errors)->toBe([])->and($batch->rows_new)->toBe(2);
+
+    approve($this, $batch)->assertStatus(202);
+    $app = Application::where('portal_application_no', 'PRTMNEW0001')->firstOrFail();
+    expect($app->applicant->date_of_birth->format('Y-m-d'))->toBe('2000-11-22')
+        ->and($app->applicant->email)->toBe('pooja@example.test')
+        ->and($app->preferences()->orderBy('rank')->pluck('branch_id')->all())->toBe([$this->w->a->id, $this->w->b->id]);
+});
+
+it('accepts categories the admin adds in Settings, such as KM for Kashmiri Migrant', function () {
+    $row = "PRTMKM00001,MBA(IB),Km Applicant,CAT90000301,80,km@example.test,9000000301,22-11-2000,F,KM,No,73,98,90,B.Tech,0,,,\n";
+    $batch = stageSample($this, ['--rows' => 0, '--start' => 800], append: $row);
+    expect($batch->rows_error)->toBe(1);
+
+    $admin = userWithRole('super_admin');
+    $this->actingAs($admin)->patchJson('/api/v1/system/settings/import_categories', ['value' => ['GEN', 'SC', 'ST', 'OBC-NCL', 'EWS', 'km']])->assertOk();
+    $this->patchJson('/api/v1/system/settings/import_categories', ['value' => ['bad code!']])->assertUnprocessable();
+    expect(Settings::get('import_categories'))->toContain('KM')
+        ->and(MeritEngine::categories())->toContain('KM');
+
+    $batch = stageSample($this, ['--rows' => 0, '--start' => 810], append: str_replace('PRTMKM00001', 'PRTMKM00002', $row));
+    expect($batch->rows_error)->toBe(0)->and($batch->rows_new)->toBe(1);
 });

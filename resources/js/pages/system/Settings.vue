@@ -12,7 +12,7 @@ const err = ref('');
 
 async function load() {
     settings.value = (await api.get('/system/settings')).data.data;
-    values.value = Object.fromEntries(settings.value.map((s) => [s.key, s.value ?? '']));
+    values.value = Object.fromEntries(settings.value.map((s) => [s.key, Array.isArray(s.value) ? s.value.join(', ') : (s.value ?? '')]));
 }
 onMounted(load);
 
@@ -20,7 +20,9 @@ async function save(key: string) {
     msg.value = err.value = '';
     try {
         const v = values.value[key];
-        await api.patch(`/system/settings/${key}`, { value: v === '' ? null : v });
+        const isList = Array.isArray(settings.value.find((s) => s.key === key)?.value);
+        const value = isList ? String(v).split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean) : v === '' ? null : v;
+        await api.patch(`/system/settings/${key}`, { value });
         await load();
         msg.value = `${titleCase(key)} saved.`;
     } catch (e) {
@@ -38,7 +40,7 @@ async function save(key: string) {
             <div class="flex-1">
                 <label :for="`s-${s.key}`" class="label">{{ titleCase(s.key) }} <span v-if="s.is_technical" class="text-xs text-slate-500">(technical)</span></label>
                 <input :id="`s-${s.key}`" v-model="values[s.key]" class="input" :type="typeof s.value === 'number' ? 'number' : 'text'" :disabled="!s.editable" />
-                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ s.description }}</p>
+                <p class="mt-1 text-sm text-slate-600 dark:text-slate-400">{{ s.description }}<template v-if="Array.isArray(s.value)"> Separate them with commas.</template></p>
             </div>
             <button v-if="s.editable" type="submit" class="btn-secondary">Save</button>
         </form>
