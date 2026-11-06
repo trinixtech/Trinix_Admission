@@ -9,10 +9,11 @@ use App\Modules\Organisation\Models\Course;
 use App\Modules\Selection\Services\ScheduleImport;
 use App\Support\Rules\UploadedTable;
 use App\Support\Scope;
+use App\Support\Spreadsheet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 
 /** Interview dates, panels, slots and members from the Excel template: download, upload for a preview, confirm. */
 class ScheduleImportController extends Controller
@@ -26,8 +27,7 @@ class ScheduleImportController extends Controller
         $cycle = AdmissionCycle::where('uid', $d['cycle_uid'])->firstOrFail();
         $this->access()->authorize($this->actor(), 'panels.manage', new Scope(null, $course->id, $cycle->id));
 
-        return response($this->import->template($course->id, $cycle->id), 200, ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition' => "attachment; filename=\"interview-schedule-{$course->code}.xlsx\"", 'Cache-Control' => 'private, no-store']);
+        return Spreadsheet::download("interview-schedule-{$course->code}", ScheduleImport::COLUMNS, $this->import->templateRows($course->id, $cycle->id));
     }
 
     public function preview(Request $request): JsonResponse

@@ -15,13 +15,13 @@ use App\Modules\Selection\Models\SelectionStage;
 use App\Modules\Selection\Services\EvaluationService;
 use App\Modules\Selection\Services\PanelAccess;
 use App\Modules\Selection\Services\PanelService;
+use App\Support\Printable;
 use App\Support\Scope;
-use Dompdf\Dompdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PanelController extends Controller
@@ -315,13 +315,9 @@ class PanelController extends Controller
         $slots = $panel->slots()->orderBy('starts_at')->with(['candidates' => fn ($q) => $q->where('active', true)->orderBy('id')->with('application.applicant:id,full_name')])->get();
         $members = $panel->members()->whereNull('removed_at')->with('user:id,name')->get();
         $this->audit()->record('panel.sheet_printed', $panel, null, ['candidates' => $slots->sum(fn ($s) => $s->candidates->count())], scope: PanelService::scope($panel));
-        $pdf = new Dompdf(['isRemoteEnabled' => false]);
-        $pdf->loadHtml(view('panels.sheet', compact('panel', 'slots', 'members', 'tz'))->render());
-        $pdf->setPaper('A4');
-        $pdf->render();
-        $name = preg_replace('/[^A-Za-z0-9._-]+/', '-', "attendance-{$panel->stage->code}-{$panel->name}-".$panel->panel_date->format('Y-m-d'));
 
-        return response($pdf->output(), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"$name.pdf\"", 'Cache-Control' => 'private, no-store']);
+        return Printable::response(view('panels.sheet', compact('panel', 'slots', 'members', 'tz'))->render(),
+            "attendance-{$panel->stage->code}-{$panel->name}-".$panel->panel_date->format('Y-m-d'));
     }
 
     private function ensureVisible(InterviewPanel $panel): void

@@ -25,6 +25,7 @@ class BackupController extends Controller
             'settings' => $this->backups->settings(),
             'backups' => $this->backups->list(),
             'can_restore' => $this->access()->can($this->actor(), 'backups.restore'),
+            'format' => BackupService::sealed() ? 'openssl' : 'zip',
             'max_upload_mb' => (int) floor(min($this->bytes(ini_get('upload_max_filesize')), $this->bytes(ini_get('post_max_size'))) / 1048576),
         ]]);
     }
@@ -80,13 +81,13 @@ class BackupController extends Controller
         }
         $this->audit()->record('backup.downloaded', null, null, ['name' => $name]);
 
-        return response()->download($path, $name, ['Content-Type' => 'application/zip']);
+        return response()->download($path, $name, ['Content-Type' => str_ends_with($name, '.zip') ? 'application/zip' : 'application/octet-stream']);
     }
 
     public function upload(Request $request): JsonResponse
     {
         $this->access()->authorizeAnywhere($this->actor(), 'backups.restore');
-        $data = $request->validate(['file' => ['required', 'file', 'extensions:zip'], 'backup_password' => ['nullable', 'string', 'max:128']]);
+        $data = $request->validate(['file' => ['required', 'file', 'extensions:zip,enc'], 'backup_password' => ['nullable', 'string', 'max:128']]);
 
         return $this->guard(fn () => response()->json(['data' => $this->backups->upload($data['file']->getRealPath(), $data['backup_password'] ?? null, $this->actor()),
             'message' => 'The backup opens and can be restored.'], 201), 'file');

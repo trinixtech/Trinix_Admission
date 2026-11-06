@@ -109,8 +109,9 @@ class BackupService
     public function create(string $kind = 'db', ?User $actor = null, string $trigger = 'manual'): array
     {
         @set_time_limit(0);
-        if (! class_exists(ZipArchive::class)) {
-            throw new RuntimeException('The PHP extension zip is not enabled on this server (cPanel → Select PHP Version → Extensions).');
+        $sealed = self::sealed();
+        if ($sealed && $kind === 'full') {
+            throw new RuntimeException('Full backups with documents need the PHP extension zip, which this server does not have. Database backups work: use "Back up now".');
         }
         $password = $this->password();
         $dir = self::dir();
@@ -118,7 +119,7 @@ class BackupService
             throw new RuntimeException("The backup folder cannot be written: $dir. In File Manager, give storage/app the permission 755 (or 775).");
         }
         $stamp = now(config('app.display_timezone', 'Asia/Kolkata'))->format('Ymd-His');
-        $name = "trinix-admission-$kind-$stamp".($trigger === 'safety' ? '-before-restore' : '').'.zip';
+        $name = "trinix-admission-$kind-$stamp".($trigger === 'safety' ? '-before-restore' : '').($sealed ? '.sql.gz.enc' : '.zip');
         $path = self::dir()."/$name";
         // The server's temporary folder may be shared or too small on hosting; use the app's own storage.
         $sql = tempnam(storage_path('app'), 'bk') ?: tempnam(sys_get_temp_dir(), 'bk');
@@ -128,30 +129,34 @@ class BackupService
             $this->dump($fh);
             fclose($fh);
 
-            $zip = new ZipArchive;
-            if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-                throw new RuntimeException('Could not create the backup file.');
-            }
-            $zip->setPassword($password);
-            $zip->addFile($sql, 'database.sql');
-            if (! $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256)) {
-                $zip->close();
-                @unlink($path);
-                throw new RuntimeException('This server\'s ZIP library cannot encrypt files (libzip without AES), so no backup was made: backups are never stored unencrypted. Ask the hosting company to enable AES encryption in PHP zip (libzip 1.2 or newer with crypto).');
-            }
-            $zip->addFromString('README.txt', "Trinix Admission backup ($kind), ".now()->toIso8601String().".\nOpen with the backup password. Restore from System → Backups, or import database.sql with phpMyAdmin.\n");
-            if ($kind === 'full') {
-                $disk = Storage::disk('private');
-                foreach ($disk->allFiles() as $file) {
-                    $entry = "documents/$file";
-                    $local = config('filesystems.disks.private.driver') === 'local' ? $disk->path($file) : null;
-                    $local && is_file($local) ? $zip->addFile($local, $entry) : $zip->addFromString($entry, (string) $disk->get($file));
-                    $zip->setEncryptionName($entry, ZipArchive::EM_AES_256);
+            if ($sealed) {
+                file_put_contents($path, self::seal((string) gzencode((string) file_get_contents($sql), 6), $password)) ?: throw new RuntimeException('Could not write the backup file. Check the free disk space in cPanel.');
+            } else {
+                $zip = new ZipArchive;
+                if ($zip->open($path, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                    throw new RuntimeException('Could not create the backup file.');
                 }
-            }
-            if (! $zip->close()) {
-                @unlink($path);
-                throw new RuntimeException('Could not write the backup file ('.$zip->getStatusString().'). Check the free disk space in cPanel.');
+                $zip->setPassword($password);
+                $zip->addFile($sql, 'database.sql');
+                if (! $zip->setEncryptionName('database.sql', ZipArchive::EM_AES_256)) {
+                    $zip->close();
+                    @unlink($path);
+                    throw new RuntimeException('This server\'s ZIP library cannot encrypt files (libzip without AES), so no backup was made: backups are never stored unencrypted. Ask the hosting company to enable AES encryption in PHP zip (libzip 1.2 or newer with crypto).');
+                }
+                $zip->addFromString('README.txt', "Trinix Admission backup ($kind), ".now()->toIso8601String().".\nOpen with the backup password. Restore from System → Backups, or import database.sql with phpMyAdmin.\n");
+                if ($kind === 'full') {
+                    $disk = Storage::disk('private');
+                    foreach ($disk->allFiles() as $file) {
+                        $entry = "documents/$file";
+                        $local = config('filesystems.disks.private.driver') === 'local' ? $disk->path($file) : null;
+                        $local && is_file($local) ? $zip->addFile($local, $entry) : $zip->addFromString($entry, (string) $disk->get($file));
+                        $zip->setEncryptionName($entry, ZipArchive::EM_AES_256);
+                    }
+                }
+                if (! $zip->close()) {
+                    @unlink($path);
+                    throw new RuntimeException('Could not write the backup file ('.$zip->getStatusString().'). Check the free disk space in cPanel.');
+                }
             }
         } finally {
             @unlink($sql);
@@ -243,7 +248,7 @@ class BackupService
     /** @return list<array{name: string, kind: string, size: int, created_at: string}> */
     public function list(): array
     {
-        $files = glob(self::dir().'/trinix-admission-*.zip') ?: [];
+        $files = array_merge(glob(self::dir().'/trinix-admission-*.zip') ?: [], glob(self::dir().'/trinix-admission-*.sql.gz.enc') ?: []);
         $out = array_map(fn ($f) => $this->info($f), $files);
         usort($out, fn ($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
@@ -252,7 +257,7 @@ class BackupService
 
     public function path(string $name): string
     {
-        if (! preg_match('/^trinix-admission-(db|full|upload)-[0-9A-Za-z-]+\.zip$/', $name) || ! is_file(self::dir()."/$name")) {
+        if (! preg_match('/^trinix-admission-(db|full|upload)-[0-9A-Za-z-]+\.(zip|sql\.gz\.enc)$/', $name) || ! is_file(self::dir()."/$name")) {
             throw new RuntimeException('There is no backup with that name.');
         }
 
@@ -283,7 +288,8 @@ class BackupService
     public function upload(string $tmpPath, ?string $password, User $actor): array
     {
         $this->extractSql($tmpPath, $password, fn () => null);
-        $name = 'trinix-admission-upload-'.now(config('app.display_timezone', 'Asia/Kolkata'))->format('Ymd-His').'.zip';
+        $head = (string) file_get_contents($tmpPath, false, null, 0, 8);
+        $name = 'trinix-admission-upload-'.now(config('app.display_timezone', 'Asia/Kolkata'))->format('Ymd-His').($head === 'Salted__' ? '.sql.gz.enc' : '.zip');
         copy($tmpPath, self::dir()."/$name");
         $this->auditor->record('backup.uploaded', null, null, ['name' => $name], actorId: $actor->id);
 
@@ -357,7 +363,7 @@ class BackupService
         $docs = 0;
         $safety = null;
 
-        $this->extractSql($path, $password, function (string $sql, array $header, ZipArchive $zip) use (&$tables, &$docs, &$safety, $actor, $name) {
+        $this->extractSql($path, $password, function (string $sql, array $header, ?ZipArchive $zip) use (&$tables, &$docs, &$safety, $actor, $name) {
             $safety = $this->create('db', $actor, 'safety')['name'];
             $mysql = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true);
             $conn = DB::connection();
@@ -373,7 +379,7 @@ class BackupService
             $conn->statement($mysql ? 'SET FOREIGN_KEY_CHECKS=1' : 'PRAGMA foreign_keys=ON');
 
             $disk = Storage::disk('private');
-            for ($i = 0; $i < $zip->numFiles; $i++) {
+            for ($i = 0; $zip && $i < $zip->numFiles; $i++) {
                 $entry = (string) $zip->getNameIndex($i);
                 if (str_starts_with($entry, 'documents/') && ! str_ends_with($entry, '/') && ! str_contains($entry, '..')) {
                     $disk->put(substr($entry, 10), (string) $zip->getFromIndex($i));
@@ -413,6 +419,23 @@ class BackupService
     /** Opens the ZIP, checks the SQL header against this installation, and hands the extracted SQL to $then. */
     private function extractSql(string $zipPath, ?string $password, callable $then): mixed
     {
+        if ((string) file_get_contents($zipPath, false, null, 0, 8) === 'Salted__') {
+            $sql = self::unseal((string) file_get_contents($zipPath), $this->password($password));
+            if ($sql === null) {
+                throw new RuntimeException('The backup password is wrong, or the file is damaged.');
+            }
+            $tmp = tempnam(storage_path('app'), 'rs') ?: tempnam(sys_get_temp_dir(), 'rs');
+            file_put_contents($tmp, $sql);
+            unset($sql);
+            try {
+                return $then($tmp, $this->checkHeader($tmp), null);
+            } finally {
+                @unlink($tmp);
+            }
+        }
+        if (! class_exists(ZipArchive::class)) {
+            throw new RuntimeException('This backup is a ZIP, and this server has no PHP zip extension to open it.');
+        }
         $zip = new ZipArchive;
         if ($zip->open($zipPath) !== true) {
             throw new RuntimeException('This is not a backup file (it does not open as a ZIP).');
@@ -431,22 +454,11 @@ class BackupService
             stream_copy_to_stream($in, $out);
             fclose($in);
             fclose($out);
-            $first = (string) fgets($fh = fopen($tmp, 'rb'));
-            fclose($fh);
-            if (! str_starts_with($first, self::HEADER)) {
+            try {
+                $header = $this->checkHeader($tmp);
+            } catch (RuntimeException $e) {
                 @unlink($tmp);
-                throw new RuntimeException('The backup password is wrong, or this is not a Trinix Admission backup.');
-            }
-            $header = json_decode(substr($first, strlen(self::HEADER)), true) ?: [];
-            $driver = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true) ? 'mysql' : DB::connection()->getDriverName();
-            if (($header['driver'] ?? null) !== $driver) {
-                @unlink($tmp);
-                throw new RuntimeException("This backup is from a {$header['driver']} database; this installation uses $driver.");
-            }
-            $known = array_keys(app(Migrator::class)->getMigrationFiles([database_path('migrations')]));
-            if (array_diff($header['migrations'] ?? [], $known)) {
-                @unlink($tmp);
-                throw new RuntimeException('This backup is from a newer version of Trinix Admission. Update the app first, then restore.');
+                throw $e;
             }
             try {
                 return $then($tmp, $header, $zip);
@@ -456,6 +468,58 @@ class BackupService
         } finally {
             $zip->close();
         }
+    }
+
+    /** Checks the dump's first line: a Trinix Admission backup, the same database kind, not from a newer version. */
+    private function checkHeader(string $sqlPath): array
+    {
+        $first = (string) fgets($fh = fopen($sqlPath, 'rb'));
+        fclose($fh);
+        if (! str_starts_with($first, self::HEADER)) {
+            throw new RuntimeException('The backup password is wrong, or this is not a Trinix Admission backup.');
+        }
+        $header = json_decode(substr($first, strlen(self::HEADER)), true) ?: [];
+        $driver = in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true) ? 'mysql' : DB::connection()->getDriverName();
+        if (($header['driver'] ?? null) !== $driver) {
+            throw new RuntimeException("This backup is from a {$header['driver']} database; this installation uses $driver.");
+        }
+        $known = array_keys(app(Migrator::class)->getMigrationFiles([database_path('migrations')]));
+        if (array_diff($header['migrations'] ?? [], $known)) {
+            throw new RuntimeException('This backup is from a newer version of Trinix Admission. Update the app first, then restore.');
+        }
+
+        return $header;
+    }
+
+    /** Backups as OpenSSL-encrypted files (no ZIP) when the zip extension is missing, or when set for tests. */
+    public static function sealed(): bool
+    {
+        return config('backups.format') === 'openssl' || ! class_exists(ZipArchive::class);
+    }
+
+    /**
+     * AES-256-CBC in OpenSSL's "Salted__" format with a PBKDF2-SHA256 key (100,000 rounds), so the file can also be
+     * opened outside the app: openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -in FILE | gunzip > database.sql
+     */
+    public static function seal(string $data, string $password): string
+    {
+        $salt = random_bytes(8);
+        $km = hash_pbkdf2('sha256', $password, $salt, 100000, 48, true);
+
+        return 'Salted__'.$salt.openssl_encrypt($data, 'aes-256-cbc', substr($km, 0, 32), OPENSSL_RAW_DATA, substr($km, 32, 16));
+    }
+
+    /** The SQL inside a sealed backup, or null when the password is wrong or the file is damaged. */
+    public static function unseal(string $file, string $password): ?string
+    {
+        if (strlen($file) < 32 || ! str_starts_with($file, 'Salted__')) {
+            return null;
+        }
+        $km = hash_pbkdf2('sha256', $password, substr($file, 8, 8), 100000, 48, true);
+        $gz = openssl_decrypt(substr($file, 16), 'aes-256-cbc', substr($km, 0, 32), OPENSSL_RAW_DATA, substr($km, 32, 16));
+        $sql = $gz === false ? false : @gzdecode($gz);
+
+        return $sql === false ? null : $sql;
     }
 
     public static function humanSize(int $bytes): string

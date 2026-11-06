@@ -10,6 +10,8 @@ import { execFileSync } from 'node:child_process';
 const BASE = process.env.BASE_URL ?? 'http://127.0.0.1:8000';
 const LOG = process.env.LOG_FILE ?? 'storage/logs/laravel.log';
 const SHOTS = process.env.SHOTS_DIR ?? 'storage/e2e';
+// LIMITED=1: the server runs PHP without zip/dom/xmlreader/fileinfo (shared hosting); ZIP uploads are refused.
+const LIMITED = process.env.LIMITED === '1';
 const ADMIN = { email: process.env.DEMO_ADMIN_EMAIL ?? 'admin@example.test', password: process.env.DEMO_ADMIN_PASSWORD ?? 'change-me-please-123' };
 mkdirSync(SHOTS, { recursive: true });
 
@@ -306,15 +308,21 @@ try {
     await dialog.getByLabel(label('Round')).selectOption({ index: 0 });
     await dialog.locator('input[type=file]').setInputFiles(docsZip);
     await dialog.getByRole('button', { name: 'Upload' }).click();
-    await page2.waitForURL(/\/imports\/.+/);
-    await expectText(page2, 'New documents (7)');
-    await page2.getByRole('tab', { name: /Errors/ }).click();
-    await expectText(page2, 'Virus found');
-    await shot(page2, '17-document-preview-mobile');
-    await page.goto(page2.url().replace(/^https?:\/\/[^/]+/, BASE));
-    await page.getByRole('button', { name: 'Approve and write' }).click();
-    await page.getByRole('dialog').getByRole('button', { name: 'Approve and write' }).click();
-    await expectText(page, 'Every row is accounted for.');
+    if (LIMITED) {
+        // A server without the zip extension says so clearly (limited mode); the walk-through goes on.
+        await expectText(page2, 'This server cannot open ZIP files');
+        await dialog.getByRole('button', { name: 'Cancel' }).click();
+    } else {
+        await page2.waitForURL(/\/imports\/.+/);
+        await expectText(page2, 'New documents (7)');
+        await page2.getByRole('tab', { name: /Errors/ }).click();
+        await expectText(page2, 'Virus found');
+        await shot(page2, '17-document-preview-mobile');
+        await page.goto(page2.url().replace(/^https?:\/\/[^/]+/, BASE));
+        await page.getByRole('button', { name: 'Approve and write' }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Approve and write' }).click();
+        await expectText(page, 'Every row is accounted for.');
+    }
 
     // ---------------- Interviews: faculty, panels, schedule, live marking ----------------
     const istDate = (days) => new Date(Date.now() + 5.5 * 3600e3 + days * 86400e3).toISOString().slice(0, 10);
@@ -521,9 +529,9 @@ try {
     await shot(page2, '30-merit-breakdown-mobile');
     await page2.getByRole('dialog').getByRole('button', { name: /Close/ }).click().catch(() => page2.keyboard.press('Escape'));
     const [download] = await Promise.all([page2.waitForEvent('download'), page2.getByRole('link', { name: 'Excel' }).click()]);
-    if (!download.suggestedFilename().endsWith('.xlsx')) throw new Error(`Excel export: ${download.suggestedFilename()}`);
+    if (!download.suggestedFilename().endsWith(LIMITED ? '.csv' : '.xlsx')) throw new Error(`Excel export: ${download.suggestedFilename()}`);
     const pdf = await page2.request.get(`${BASE}${await page2.getByRole('link', { name: 'Notice PDF' }).getAttribute('href')}`, { headers: { Referer: `${BASE}/merit/lists` } });
-    if (!(await pdf.body()).subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('Notice PDF is not a PDF');
+    if (LIMITED ? !(await pdf.text()).includes('window.print()') : !(await pdf.body()).subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('Notice PDF is not a PDF (or printable page)');
 
     step('The Super Admin approves and publishes the list (not the person who ran it)');
     await page.goto(`${BASE}/merit/lists`);

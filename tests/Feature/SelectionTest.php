@@ -644,7 +644,7 @@ it('leaves switched-off stages out of new panels and the schedule template', fun
     $this->actingAs($this->staff)->postJson('/api/v1/panels', [
         'stage_uid' => $gd, 'round_uid' => $this->round1->uid, 'name' => 'P', 'panel_date' => now()->addDays(2)->toDateString(), 'mode' => 'online', 'meeting_link' => 'https://meet.example.org/x',
     ])->assertUnprocessable()->assertJsonValidationErrors('stage_uid');
-    expect(app(ScheduleImport::class)->template($this->w->mba->id, $this->w->cycle->id))->toBeString();
+    expect(collect(app(ScheduleImport::class)->templateRows($this->w->mba->id, $this->w->cycle->id))->pluck(0)->all())->not->toContain('GD');
     $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$gd", ['status' => 'active'])->assertOk();
     panel($this, $gd, [$this->f1]);
 });

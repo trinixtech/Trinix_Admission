@@ -18,8 +18,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
 use Throwable;
 
 /**
@@ -34,24 +32,18 @@ class ScheduleImport
 
     public function __construct(private FileReader $reader, private PanelService $panels, private AccessControl $access, private Auditor $auditor) {}
 
-    /** The template, with two example rows to overwrite. */
-    public function template(int $courseId, int $cycleId): string
+    /** The template's example rows (to overwrite); the controller sends them as Excel, or CSV without zip. */
+    public function templateRows(int $courseId, int $cycleId): array
     {
         $stages = SelectionStage::where(['course_id' => $courseId, 'admission_cycle_id' => $cycleId, 'status' => 'active'])->orderBy('sort_order')->pluck('code')->all();
         $loc = Location::orderBy('name')->first();
-        $path = tempnam(sys_get_temp_dir(), 'sched');
-        $w = new Writer;
-        $w->openToFile($path);
-        $w->addRow(Row::fromValues(self::COLUMNS));
         $date = now(config('app.display_timezone'))->addDays(7)->format('d-m-Y');
-        $w->addRow(Row::fromValues([$stages[0] ?? 'GD', 'GD Panel 1', $date, 'In person', $loc?->code ?? 'DEL', $loc?->city ?? 'New Delhi', 'Room 101', '', '10:00', '10:45', 8, 'faculty.one@example.org; faculty.two@example.org']));
-        $w->addRow(Row::fromValues([$stages[0] ?? 'GD', 'GD Panel 1', $date, 'In person', $loc?->code ?? 'DEL', $loc?->city ?? 'New Delhi', 'Room 101', '', '11:00', '11:45', 8, '']));
-        $w->addRow(Row::fromValues([$stages[1] ?? 'PI', 'PI Online 1', $date, 'Online', '', '', '', 'https://meet.example.org/pi-1', '14:00', '14:20', 1, 'faculty.three@example.org']));
-        $w->close();
-        $body = file_get_contents($path);
-        @unlink($path);
 
-        return $body;
+        return [
+            [$stages[0] ?? 'GD', 'GD Panel 1', $date, 'In person', $loc?->code ?? 'DEL', $loc?->city ?? 'New Delhi', 'Room 101', '', '10:00', '10:45', 8, 'faculty.one@example.org; faculty.two@example.org'],
+            [$stages[0] ?? 'GD', 'GD Panel 1', $date, 'In person', $loc?->code ?? 'DEL', $loc?->city ?? 'New Delhi', 'Room 101', '', '11:00', '11:45', 8, ''],
+            [$stages[1] ?? 'PI', 'PI Online 1', $date, 'Online', '', '', '', 'https://meet.example.org/pi-1', '14:00', '14:20', 1, 'faculty.three@example.org'],
+        ];
     }
 
     /** Read and check the file; returns the preview and a token to confirm it. */

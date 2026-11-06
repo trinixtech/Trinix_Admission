@@ -9,7 +9,7 @@ import { dateTime } from '@/lib/format';
 
 /** System → Backups: encrypted backups, the daily schedule and email, downloads, upload and restore. */
 interface Backup { name: string; kind: 'db' | 'full' | 'upload'; size: number; created_at: string; safety: boolean }
-const d = ref<{ settings: any; backups: Backup[]; can_restore: boolean; max_upload_mb: number } | null>(null);
+const d = ref<{ settings: any; backups: Backup[]; can_restore: boolean; max_upload_mb: number; format: 'zip' | 'openssl' } | null>(null);
 const form = ref<any>({});
 const pw = ref({ password: '', password_confirmation: '' });
 const msg = ref('');
@@ -129,6 +129,10 @@ const upload = () => act('upload', () => {
                 </div>
             </div>
             <p class="mb-3 text-sm text-slate-600 dark:text-slate-400">"Back up now" also emails it, if addresses are set. Full backups include the documents and are not emailed.</p>
+            <p v-if="d.format === 'openssl'" class="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
+                This server has no PHP zip extension, so backups are <b>.sql.gz.enc</b> files encrypted with AES-256 (OpenSSL) and the backup password, and full backups with documents are not available.
+                Restore them here. Outside the app they open with: <code class="break-all">openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -in FILE | gunzip &gt; database.sql</code>
+            </p>
             <ul class="divide-y divide-slate-100 dark:divide-slate-800">
                 <li v-for="b in d.backups" :key="b.name" class="flex flex-wrap items-center justify-between gap-2 py-3">
                     <div class="min-w-0">
@@ -148,7 +152,7 @@ const upload = () => act('upload', () => {
             <h2 id="up-h" class="mb-1 text-lg font-semibold">Upload a backup</h2>
             <p class="mb-3 text-sm text-slate-600 dark:text-slate-400">For example the ZIP from a backup email. It is checked (it must open with the password and fit this version), then listed above for restoring. Largest upload on this server: {{ d.max_upload_mb }} MB.</p>
             <form class="grid gap-3 sm:grid-cols-3 sm:items-end" @submit.prevent="upload">
-                <label class="block"><span class="label">Backup ZIP</span><input type="file" accept=".zip" class="input py-2" @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
+                <label class="block"><span class="label">Backup file (.zip or .enc)</span><input type="file" accept=".zip,.enc" class="input py-2" @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" /></label>
                 <Field v-model="upPw" label="Its password" type="password" help="Leave empty if it is the current backup password." autocomplete="off" />
                 <button type="submit" class="btn-secondary" :disabled="!file || busy === 'upload'">Upload and check</button>
             </form>

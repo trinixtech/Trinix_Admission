@@ -4,6 +4,7 @@ namespace App\Modules\System\Services;
 
 use App\Modules\Documents\Models\DocumentVersion;
 use App\Modules\Documents\Services\DocumentScanner;
+use App\Support\Compat;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -73,11 +74,14 @@ class HealthCheck
                 return $scanner->name().' reachable. Pending scans: '.$pending;
             });
 
-        $missing = array_values(array_filter(['pdo_mysql', 'mbstring', 'openssl', 'intl', 'zip', 'fileinfo', 'dom', 'xml', 'xmlreader', 'curl'],
-            fn ($e) => ! extension_loaded($e) && ! ($e === 'pdo_mysql' && config('database.default') !== 'mysql')));
-        $checks['php_extensions'] = ['ok' => ! $missing, 'detail' => $missing
-            ? 'Missing: '.implode(', ', $missing).' (cPanel → Select PHP Version → Extensions, for PHP '.PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION.').'
-            : 'All needed extensions are enabled (PHP '.PHP_VERSION.').'];
+        $hard = array_values(array_filter(['openssl', ...(config('database.default') === 'mysql' ? ['pdo_mysql'] : [])], fn ($e) => ! extension_loaded($e)));
+        $soft = array_values(array_filter(['zip', 'xmlreader', 'dom', 'fileinfo', 'mbstring', 'intl', 'curl'], fn ($e) => ! extension_loaded($e)));
+        $limits = Compat::limitations();
+        $checks['php_extensions'] = ['ok' => ! $hard, 'detail' => match (true) {
+            (bool) $hard => 'Missing (required): '.implode(', ', $hard).'.',
+            (bool) $soft => 'Working in limited mode, missing: '.implode(', ', $soft).($limits ? '. So: '.implode('; ', $limits) : '').'. To lift this, enable them for PHP '.PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION.' (Select PHP Version → Extensions, or ask the host).',
+            default => 'All extensions are enabled (PHP '.PHP_VERSION.').',
+        }];
 
         $backups = app(BackupService::class);
         $latest = $backups->list()[0] ?? null;

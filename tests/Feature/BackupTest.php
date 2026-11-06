@@ -14,14 +14,14 @@ beforeEach(function () {
     $this->app['config']->set('filesystems.disks.private.root', $this->dir.'-docs');
     Storage::fake('private');
     @mkdir(storage_path('app/backups'), 0750, true);
-    array_map('unlink', glob(storage_path('app/backups').'/trinix-admission-*.zip') ?: []);
+    array_map('unlink', array_merge(glob(storage_path('app/backups').'/trinix-admission-*.zip') ?: [], glob(storage_path('app/backups').'/trinix-admission-*.enc') ?: []));
     $this->admin = userWithRole('super_admin');
     $this->it = userWithRole('it_admin');
     Mail::fake();
 });
 
 afterEach(function () {
-    array_map('unlink', glob(storage_path('app/backups').'/trinix-admission-*.zip') ?: []);
+    array_map('unlink', array_merge(glob(storage_path('app/backups').'/trinix-admission-*.zip') ?: [], glob(storage_path('app/backups').'/trinix-admission-*.enc') ?: []));
 });
 
 function backupPassword(object $t, string $pw = 'a-long-backup-password'): void
@@ -162,4 +162,31 @@ it('keeps the backup and says so when only the email fails', function () {
     $r = $this->postJson('/api/v1/system/backups', ['kind' => 'db', 'email' => true])->assertCreated();
     expect($r->json('message'))->toContain('Backup made')->toContain('email could not be sent')
         ->and(app(BackupService::class)->list())->toHaveCount(1);
+});
+
+it('makes, opens and restores OpenSSL-encrypted backups when the server has no zip extension', function () {
+    config(['backups.format' => 'openssl']);
+    backupPassword($this);
+    Institution::create(['code' => 'KEEP', 'name' => 'Kept institution']);
+    $info = $this->postJson('/api/v1/system/backups', ['kind' => 'db'])->assertCreated()->json('data');
+    expect($info['name'])->toEndWith('.sql.gz.enc');
+    $path = storage_path('app/backups/'.$info['name']);
+    $raw = file_get_contents($path);
+    expect($raw)->toStartWith('Salted__')->not->toContain('INSERT INTO')
+        ->and(BackupService::unseal($raw, 'wrong-password-123'))->toBeNull();
+
+    // The standard openssl tool opens it too (documented for use outside the app).
+    $cmd = 'openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -pass pass:a-long-backup-password -in '.escapeshellarg($path).' | gunzip';
+    expect((string) shell_exec($cmd))->toStartWith('-- trinix-admission-backup ');
+
+    $this->postJson('/api/v1/system/backups', ['kind' => 'full'])->assertUnprocessable();
+    Institution::where('code', 'KEEP')->delete();
+    $this->postJson('/api/v1/system/backups/'.$info['name'].'/restore', ['confirm' => 'RESTORE', 'password' => 'correct-horse-battery'])->assertOk();
+    expect(Institution::where('code', 'KEEP')->exists())->toBeTrue();
+
+    $copy = tempnam(sys_get_temp_dir(), 'up').'.enc';
+    copy($path, $copy);
+    $this->post('/api/v1/system/backups/upload', ['file' => new UploadedFile($copy, $info['name'], 'application/octet-stream', null, true)], ['Accept' => 'application/json'])
+        ->assertCreated()->assertJsonPath('data.kind', 'upload');
+    $this->get('/api/v1/system/backups/'.$info['name'].'/download')->assertOk();
 });

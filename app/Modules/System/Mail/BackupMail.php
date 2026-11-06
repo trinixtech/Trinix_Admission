@@ -23,7 +23,7 @@ class BackupMail extends Mailable
         $size = BackupService::humanSize($this->info['size']);
         $text = $this->attachPath
             ? "The database backup of {$this->siteUrl} is attached ({$this->info['name']}, $size).\n\n"
-              ."It is an encrypted ZIP: open it with the backup password set in System → Backups. The password is never sent by email.\n"
+              .(str_ends_with($this->info['name'], '.zip') ? 'It is an encrypted ZIP: open it with the backup password set in System → Backups.' : 'It is encrypted (AES-256) with the backup password set in System → Backups.')." The password is never sent by email.\n"
               ."Keep this email in a safe place; it holds applicants' personal data (DPDP Act 2023).\n\n"
               .'To restore: System → Backups → Upload a backup, then Restore.'
             : "The database backup of {$this->siteUrl} was made ({$this->info['name']}, $size), but it is larger than the email limit, so it is not attached.\n\n"
@@ -34,6 +34,6 @@ class BackupMail extends Mailable
 
     public function attachments(): array
     {
-        return $this->attachPath ? [Attachment::fromPath($this->attachPath)->as($this->info['name'])->withMime('application/zip')] : [];
+        return $this->attachPath ? [Attachment::fromPath($this->attachPath)->as($this->info['name'])->withMime(str_ends_with($this->info['name'], '.zip') ? 'application/zip' : 'application/octet-stream')] : [];
     }
 }

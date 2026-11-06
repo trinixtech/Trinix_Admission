@@ -14,7 +14,10 @@ use App\Modules\Imports\Console\Benchmark;
 use App\Modules\Imports\Console\MakeSampleFile;
 use App\Modules\Selection\Console\SendReminders;
 use App\Modules\System\Console\RunBackups;
+use App\Support\Compat;
+use App\Support\StyleTagMarkdown;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Mail\Markdown;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
@@ -25,6 +28,15 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Without the dom extension, HTML emails carry their CSS in a <style> tag (no inlining).
+        if (! extension_loaded('dom')) {
+            $this->app->extend(Markdown::class, fn ($markdown, $app) => new StyleTagMarkdown($app->make('view'), [
+                'theme' => config('mail.markdown.theme', 'default'),
+                'paths' => config('mail.markdown.paths', []),
+                'extensions' => config('mail.markdown.extensions', []),
+            ]));
+        }
+
         // One instance per request (and reset between queued jobs by Laravel's scoped bindings).
         $this->app->scoped(AccessControl::class);
         $this->app->bind(DocumentScanner::class, fn () => config('documents.scanner') === 'eicar'
@@ -34,6 +46,8 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        Compat::registerStorageFallback();
+
         Model::preventSilentlyDiscardingAttributes(! $this->app->isProduction());
 
         Password::defaults(function () {

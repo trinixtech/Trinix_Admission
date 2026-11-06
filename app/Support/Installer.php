@@ -57,8 +57,18 @@ class Installer
             ['PHP 8.3 or newer', version_compare(PHP_VERSION, '8.3.0', '>='), true, 'This server has PHP '.PHP_VERSION],
             ['MySQL driver (pdo_mysql)', $ext('pdo_mysql'), true, 'Needed for MySQL 8'],
         ];
-        foreach (['mbstring', 'openssl', 'intl', 'zip', 'fileinfo', 'dom', 'xml', 'xmlreader', 'curl'] as $e) {
-            $c[] = ["PHP extension $e", $ext($e), true, ''];
+        $c[] = ['PHP extension openssl', $ext('openssl'), true, 'Needed for sign-in security and encrypted backups'];
+        // Recommended: without them the app runs in a limited mode (see App\Support\Compat).
+        foreach ([
+            'zip' => 'Without it: exports are CSV, backups are encrypted with OpenSSL, Excel and ZIP uploads are not read',
+            'xmlreader' => 'Without it: student and faculty files must be CSV, not Excel',
+            'dom' => 'Without it: printouts open as printable pages instead of PDF; Excel uploads are not read',
+            'fileinfo' => 'Without it: file types are told by their names',
+            'mbstring' => 'A built-in replacement is used if missing',
+            'intl' => 'A built-in replacement is used if missing',
+            'curl' => 'Needed only for importing documents by web link',
+        ] as $e => $note) {
+            $c[] = ["PHP extension $e", $ext($e), false, $note];
         }
         $c[] = ['storage/ folder writable', $writable(storage_path()), true, storage_path()];
         $c[] = ['bootstrap/cache/ folder writable', $writable(base_path('bootstrap/cache')), true, base_path('bootstrap/cache')];

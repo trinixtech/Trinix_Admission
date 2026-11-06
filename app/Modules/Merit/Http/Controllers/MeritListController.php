@@ -10,13 +10,12 @@ use App\Modules\Merit\Models\MeritList;
 use App\Modules\Merit\Models\MeritListEntry;
 use App\Modules\Merit\Services\MeritService;
 use App\Modules\Organisation\Models\Course;
+use App\Support\Printable;
 use App\Support\Scope;
-use Dompdf\Dompdf;
+use App\Support\Spreadsheet;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use OpenSpout\Common\Entity\Row;
-use OpenSpout\Writer\XLSX\Writer;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -153,33 +152,23 @@ class MeritListController extends Controller
         $name = "merit-{$list->course->code}-{$list->round->name}-v{$list->version}";
 
         if ($format === 'pdf') {
-            $html = view('merit.notice', ['list' => $list, 'entries' => $entries->where('ranked', true)])->render();
-            $pdf = new Dompdf(['isRemoteEnabled' => false]);
-            $pdf->loadHtml($html);
-            $pdf->setPaper('A4');
-            $pdf->render();
-
-            return response($pdf->output(), 200, ['Content-Type' => 'application/pdf', 'Content-Disposition' => "attachment; filename=\"$name.pdf\"", 'Cache-Control' => 'private, no-store']);
+            return Printable::response(view('merit.notice', ['list' => $list, 'entries' => $entries->where('ranked', true)])->render(), $name);
         }
 
-        $path = tempnam(sys_get_temp_dir(), 'merit');
-        $w = new Writer;
-        $w->openToFile($path);
         $components = $list->formula->components;
-        $w->addRow(Row::fromValues(['Rank', 'Category rank', 'PwBD rank', 'Application number', 'Name', 'Category', 'PwBD', 'Total',
-            ...$components->flatMap(fn ($c) => ["{$c->label} (value)", "{$c->label} (points)"])->all(), 'Ranked', 'Reason', 'Decided by']));
-        foreach ($entries as $e) {
+        $rows = $entries->map(function ($e) use ($components) {
             $scores = $e->scores->keyBy('merit_component_id');
-            $w->addRow(Row::fromValues([
+
+            return [
                 $e->overall_rank, $e->category_rank, $e->pwbd_rank, $e->application->portal_application_no, $e->application->applicant->full_name,
                 $e->application->category, $e->application->pwbd ? 'Yes' : 'No', $e->total === null ? null : (float) $e->total,
                 ...$components->flatMap(fn ($c) => [$e->inputs['values'][$c->key]['value'] ?? null, isset($scores[$c->id]) && $scores[$c->id]->points !== null ? (float) $scores[$c->id]->points : null])->all(),
                 $e->ranked ? 'Yes' : 'No', $e->manual ? "Committee: {$e->manual_reason}" : $e->reason, $e->decided_by,
-            ]));
-        }
-        $w->close();
+            ];
+        });
 
-        return response()->download($path, "$name.xlsx", ['Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'Cache-Control' => 'private, no-store'])->deleteFileAfterSend();
+        return Spreadsheet::download($name, ['Rank', 'Category rank', 'PwBD rank', 'Application number', 'Name', 'Category', 'PwBD', 'Total',
+            ...$components->flatMap(fn ($c) => ["{$c->label} (value)", "{$c->label} (points)"])->all(), 'Ranked', 'Reason', 'Decided by'], $rows);
     }
 
     /** The application's place in published merit lists (Merit tab). */

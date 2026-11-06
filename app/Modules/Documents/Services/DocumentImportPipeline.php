@@ -88,6 +88,9 @@ class DocumentImportPipeline
     /** ZIP safety checks before anything is unpacked. @return int number of files */
     public function inspectZip(string $path): int
     {
+        if (! class_exists(ZipArchive::class)) {
+            throw ValidationException::withMessages(['file' => 'This server cannot open ZIP files: the PHP extension zip is not enabled. Import the files by link list (CSV) instead, or ask the host to enable zip.']);
+        }
         $zip = new ZipArchive;
         if ($zip->open($path, ZipArchive::RDONLY) !== true) {
             throw ValidationException::withMessages(['file' => 'The file is not a readable ZIP archive.']);
