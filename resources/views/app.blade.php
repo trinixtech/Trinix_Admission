@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#0f172a">
+    <meta name="app-version" content="{{ config('app.version') }}">
     <title>{{ config('app.name') }}</title>
     <script>
         // Apply the saved theme before the page paints (no flash of the wrong theme).

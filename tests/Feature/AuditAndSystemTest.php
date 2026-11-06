@@ -125,3 +125,8 @@ it('schedules only commands that exist', function () {
     expect($m[1])->not->toBeEmpty()
         ->and(array_diff($m[1], array_keys(Artisan::all())))->toBe([]);
 });
+
+it('puts the installed version on every page for the sign-in screen', function () {
+    config(['app.version' => '9.8.7']);
+    $this->withoutVite()->get('/login')->assertOk()->assertSee('<meta name="app-version" content="9.8.7">', false);
+});

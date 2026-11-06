@@ -1,4 +1,6 @@
 <script setup lang="ts">
+/** Shown under the card so staff and IT can see which release is installed. */
+const version = document.querySelector('meta[name="app-version"]')?.getAttribute('content') || '';
 defineProps<{ title: string }>();
 </script>
 
@@ -33,6 +35,7 @@ defineProps<{ title: string }>();
                     <h1 class="mb-5 text-2xl font-bold">{{ title }}</h1>
                     <slot />
                 </div>
+                <p v-if="version" class="mt-4 text-center text-sm text-slate-500 dark:text-slate-400">Trinix Admission · version {{ version }}</p>
             </div>
         </main>
     </div>

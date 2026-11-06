@@ -70,7 +70,8 @@ return [
     // Times are stored in UTC and shown to people in this zone.
     'display_timezone' => env('APP_DISPLAY_TIMEZONE', 'Asia/Kolkata'),
 
-    'version' => env('APP_VERSION') ?: (is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : 'dev'),
+    // The release's VERSION file wins; APP_VERSION is only for development copies without one.
+    'version' => (is_file(base_path('VERSION')) ? trim((string) file_get_contents(base_path('VERSION'))) : '') ?: (env('APP_VERSION') ?: 'dev'),
 
     /*
     |--------------------------------------------------------------------------
