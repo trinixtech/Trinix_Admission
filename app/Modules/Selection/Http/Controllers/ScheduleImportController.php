@@ -7,6 +7,7 @@ use App\Modules\Cycles\Models\AdmissionCycle;
 use App\Modules\Cycles\Models\AdmissionRound;
 use App\Modules\Organisation\Models\Course;
 use App\Modules\Selection\Services\ScheduleImport;
+use App\Support\Rules\UploadedTable;
 use App\Support\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class ScheduleImportController extends Controller
     public function preview(Request $request): JsonResponse
     {
         $d = $request->validate(['course_uid' => ['required', Rule::exists('courses', 'uid')], 'round_uid' => ['required', Rule::exists('admission_rounds', 'uid')],
-            'file' => ['required', 'file', 'max:5120']]);
+            'file' => ['required', 'file', 'max:5120', new UploadedTable]]);
         $course = Course::where('uid', $d['course_uid'])->firstOrFail();
         $round = AdmissionRound::where('uid', $d['round_uid'])->firstOrFail();
         $this->access()->authorize($this->actor(), 'panels.manage', new Scope(null, $course->id, $round->admission_cycle_id));

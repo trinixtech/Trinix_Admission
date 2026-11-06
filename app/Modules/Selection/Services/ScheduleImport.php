@@ -163,7 +163,7 @@ class ScheduleImport
         } catch (ValidationException $e) {
             throw $e;
         } catch (Throwable) {
-            throw ValidationException::withMessages(['file' => 'The file could not be read.']);
+            throw ValidationException::withMessages(['file' => FileReader::unreadable($ext ?? 'csv')]);
         }
         if (! $panels && ! $errors) {
             throw ValidationException::withMessages(['file' => 'The file has no rows.']);

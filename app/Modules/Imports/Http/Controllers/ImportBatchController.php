@@ -10,6 +10,7 @@ use App\Modules\Imports\Models\ImportError;
 use App\Modules\Imports\Models\ImportRecord;
 use App\Modules\Imports\Services\ImportPipeline;
 use App\Modules\Organisation\Models\Course;
+use App\Support\Rules\UploadedTable;
 use App\Support\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,7 +49,7 @@ class ImportBatchController extends Controller
             'source_uid' => ['required', 'string', Rule::exists('external_sources', 'uid')],
             'round_uid' => ['required', 'string', Rule::exists('admission_rounds', 'uid')],
             'course_uid' => ['nullable', 'string', Rule::exists('courses', 'uid')],
-            'file' => ['required', 'file', 'max:'.config('import.max_file_kb'), 'mimes:csv,txt,xlsx'],
+            'file' => ['required', 'file', 'max:'.config('import.max_file_kb'), new UploadedTable],
         ]);
         $round = AdmissionRound::with('cycle')->where('uid', $data['round_uid'])->firstOrFail();
         $courseId = empty($data['course_uid']) ? null : Course::where('uid', $data['course_uid'])->value('id');

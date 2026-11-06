@@ -14,6 +14,7 @@ use App\Modules\Documents\Services\DocumentImportPipeline;
 use App\Modules\Documents\Services\DocumentStore;
 use App\Modules\Imports\Models\ExternalSource;
 use App\Modules\Selection\Services\PanelAccess;
+use App\Support\Rules\UploadedTable;
 use App\Support\Scope;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -101,7 +102,7 @@ class DocumentController extends Controller
             'kind' => ['required', Rule::in(['zip', 'urls'])],
             'source_uid' => ['required', Rule::exists('external_sources', 'uid')],
             'round_uid' => ['required', Rule::exists('admission_rounds', 'uid')],
-            'file' => ['required', 'file', $request->input('kind') === 'zip' ? 'mimes:zip' : 'mimes:csv,txt', 'max:'.(2 * 1024 * 1024)],
+            'file' => ['required', 'file', new UploadedTable($request->input('kind') === 'zip' ? ['zip'] : ['csv', 'txt']), 'max:'.(2 * 1024 * 1024)],
         ]);
         $round = AdmissionRound::with('cycle')->where('uid', $data['round_uid'])->firstOrFail();
         $this->access()->authorize($this->actor(), 'documents.manage', Scope::cycle($round->admission_cycle_id));

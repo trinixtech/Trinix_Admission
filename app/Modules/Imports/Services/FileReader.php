@@ -14,6 +14,27 @@ use RuntimeException;
 class FileReader
 {
     /** @return Generator<int, array<string, mixed>> row number in the file => header => value */
+    /** PHP extensions the reader needs for this kind of file, that this server does not have. */
+    public static function missingExtensions(string $channel): array
+    {
+        $need = $channel === 'xlsx' ? ['zip', 'xmlreader', 'dom', 'libxml'] : [];
+
+        return array_values(array_filter($need, fn ($e) => ! extension_loaded($e)));
+    }
+
+    /** A plain explanation for a file that could not be read. */
+    public static function unreadable(string $channel): string
+    {
+        if ($missing = self::missingExtensions($channel)) {
+            return 'This server cannot read Excel files yet: the PHP extension'.(count($missing) > 1 ? 's ' : ' ').implode(', ', $missing)
+                .(count($missing) > 1 ? ' are' : ' is').' not enabled (cPanel → Select PHP Version → Extensions). Meanwhile, save the file as CSV UTF-8 and upload that.';
+        }
+
+        return $channel === 'xlsx'
+            ? 'The Excel file could not be read. Open it in Excel, check it is not password-protected, and Save As "Excel Workbook (.xlsx)" or "CSV UTF-8", then upload again.'
+            : 'The file could not be read. Save it as CSV UTF-8 (comma separated) with a header row, or as Excel .xlsx.';
+    }
+
     public function rows(string $path, string $channel): Generator
     {
         $reader = $channel === 'xlsx' ? new XlsxReader : new CsvReader;

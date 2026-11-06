@@ -391,3 +391,20 @@ it('accepts categories the admin adds in Settings, such as KM for Kashmiri Migra
     $batch = stageSample($this, ['--rows' => 0, '--start' => 810], append: str_replace('PRTMKM00001', 'PRTMKM00002', $row));
     expect($batch->rows_error)->toBe(0)->and($batch->rows_new)->toBe(1);
 });
+
+it('accepts an Excel file whatever the server guesses its type to be, and refuses a disguised one', function () {
+    $xlsx = tempnam(sys_get_temp_dir(), 'x').'.xlsx';
+    $w = new Writer;
+    $w->openToFile($xlsx);
+    $w->addRow(Row::fromValues(['Application No', 'Name']));
+    $w->addRow(Row::fromValues(['200005', 'Pooja Arora']));
+    $w->close();
+    // The browser (or host) labels it as a plain zip / octet-stream.
+    upload($this, new UploadedFile($xlsx, 'IIFT_MBA_Application.xlsx', 'application/octet-stream', null, true));
+
+    $fake = tempnam(sys_get_temp_dir(), 'f').'.xlsx';
+    file_put_contents($fake, "not,a,workbook\n");
+    $this->actingAs($this->officer)->post('/api/v1/import-batches', ['source_uid' => $this->source->uid, 'round_uid' => $this->round1->uid,
+        'file' => new UploadedFile($fake, 'fake.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true)], ['Accept' => 'application/json'])
+        ->assertUnprocessable()->assertJsonFragment(['file' => ['This file is not a real Excel (.xlsx) workbook. In Excel, use Save As → Excel Workbook (.xlsx), or CSV.']]);
+});

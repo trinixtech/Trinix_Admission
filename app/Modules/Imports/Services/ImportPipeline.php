@@ -46,7 +46,7 @@ class ImportPipeline
         try {
             $info = $this->reader->inspect($file->getRealPath(), $channel);
         } catch (Throwable) {
-            throw ValidationException::withMessages(['file' => 'The file could not be read. Upload a CSV (UTF-8) or Excel .xlsx file with a header row.']);
+            throw ValidationException::withMessages(['file' => FileReader::unreadable($channel)]);
         }
         if ($info['rows'] > config('import.max_rows')) {
             throw ValidationException::withMessages(['file' => 'The file has more than '.number_format(config('import.max_rows')).' rows. Split it into smaller files.']);

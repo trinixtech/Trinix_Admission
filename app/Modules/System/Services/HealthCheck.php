@@ -73,6 +73,12 @@ class HealthCheck
                 return $scanner->name().' reachable. Pending scans: '.$pending;
             });
 
+        $missing = array_values(array_filter(['pdo_mysql', 'mbstring', 'openssl', 'intl', 'zip', 'fileinfo', 'dom', 'xml', 'xmlreader', 'curl'],
+            fn ($e) => ! extension_loaded($e) && ! ($e === 'pdo_mysql' && config('database.default') !== 'mysql')));
+        $checks['php_extensions'] = ['ok' => ! $missing, 'detail' => $missing
+            ? 'Missing: '.implode(', ', $missing).' (cPanel → Select PHP Version → Extensions, for PHP '.PHP_MAJOR_VERSION.'.'.PHP_MINOR_VERSION.').'
+            : 'All needed extensions are enabled (PHP '.PHP_VERSION.').'];
+
         $backups = app(BackupService::class);
         $latest = $backups->list()[0] ?? null;
         $settings = $backups->settings();

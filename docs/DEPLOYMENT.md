@@ -10,7 +10,7 @@ A shared host is a single server. It does **not** meet the production design in 
 
 | Need | Where in cPanel |
 | --- | --- |
-| **PHP 8.3** with the extensions pdo_mysql, mbstring, openssl, intl, zip, fileinfo, dom, xml, curl | Select PHP Version / MultiPHP Manager |
+| **PHP 8.3** with the extensions pdo_mysql, mbstring, openssl, intl, zip, fileinfo, dom, xml, xmlreader, curl | Select PHP Version / MultiPHP Manager |
 | **MySQL 8** database and a user with all privileges on it | MySQL Databases |
 | A **subdomain** (e.g. `admissions-test.<domain>`) whose **document root** you can choose, with **HTTPS** | Domains / Subdomains; SSL/TLS Status (AutoSSL) |
 | **Cron jobs** (every minute) | Cron Jobs |

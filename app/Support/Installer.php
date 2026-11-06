@@ -57,7 +57,7 @@ class Installer
             ['PHP 8.3 or newer', version_compare(PHP_VERSION, '8.3.0', '>='), true, 'This server has PHP '.PHP_VERSION],
             ['MySQL driver (pdo_mysql)', $ext('pdo_mysql'), true, 'Needed for MySQL 8'],
         ];
-        foreach (['mbstring', 'openssl', 'intl', 'zip', 'fileinfo', 'dom', 'xml', 'curl'] as $e) {
+        foreach (['mbstring', 'openssl', 'intl', 'zip', 'fileinfo', 'dom', 'xml', 'xmlreader', 'curl'] as $e) {
             $c[] = ["PHP extension $e", $ext($e), true, ''];
         }
         $c[] = ['storage/ folder writable', $writable(storage_path()), true, storage_path()];

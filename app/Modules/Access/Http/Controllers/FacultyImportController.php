@@ -4,6 +4,7 @@ namespace App\Modules\Access\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Modules\Access\Services\FacultyImport;
+use App\Support\Rules\UploadedTable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +17,7 @@ class FacultyImportController extends Controller
     {
         $this->access()->authorizeAnywhere($this->actor(), 'users.manage');
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:5120', 'mimes:csv,txt,xlsx'],
+            'file' => ['required', 'file', 'max:5120', new UploadedTable],
             'also_committee_member' => ['sometimes', 'boolean'],
         ]);
 
