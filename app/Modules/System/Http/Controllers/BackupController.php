@@ -26,6 +26,8 @@ class BackupController extends Controller
             'backups' => $this->backups->list(),
             'can_restore' => $this->access()->can($this->actor(), 'backups.restore'),
             'format' => BackupService::sealed() ? 'openssl' : 'zip',
+            'compressed' => BackupService::canGzip(),
+            'last_error' => BackupService::lastError(),
             'max_upload_mb' => (int) floor(min($this->bytes(ini_get('upload_max_filesize')), $this->bytes(ini_get('post_max_size'))) / 1048576),
         ]]);
     }

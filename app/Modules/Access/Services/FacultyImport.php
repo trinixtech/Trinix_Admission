@@ -6,6 +6,7 @@ use App\Modules\Access\Models\Role;
 use App\Modules\Access\Models\User;
 use App\Modules\Audit\Services\Auditor;
 use App\Modules\Imports\Services\FileReader;
+use App\Modules\Imports\Services\ImportLayouts;
 use App\Modules\Organisation\Models\Branch;
 use App\Support\Scope;
 use Illuminate\Http\UploadedFile;
@@ -26,6 +27,9 @@ class FacultyImport
     public const ROLES = ['faculty', 'committee_member', 'committee_chair'];
 
     public const MAX_ROWS = 2000;
+
+    /** @var array<string, string>|null */
+    private ?array $aliases = null;
 
     private const COLUMNS = [
         'name' => ['name', 'full name', 'faculty name'],
@@ -182,7 +186,18 @@ class FacultyImport
             $norm[mb_strtolower(trim(preg_replace('/\s+/', ' ', (string) $h)))] = $value;
         }
         $out = [];
+        // Headings from the admin's faculty template first (Imports → Import templates), then the usual names.
+        $aliases = $this->aliases ??= app(ImportLayouts::class)->facultyAliases();
+        foreach ($raw as $h => $value) {
+            $key = $aliases[ImportLayouts::norm((string) $h)] ?? null;
+            if ($key !== null && ! array_key_exists($key, $out)) {
+                $out[$key] = $value;
+            }
+        }
         foreach (self::COLUMNS as $key => $names) {
+            if (array_key_exists($key, $out)) {
+                continue;
+            }
             $out[$key] = null;
             foreach ($names as $n) {
                 if (array_key_exists($n, $norm)) {

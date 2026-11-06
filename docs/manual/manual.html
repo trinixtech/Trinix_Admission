@@ -235,7 +235,7 @@
     <h2>Importing faculty and panel members</h2>
     <p>To add many faculty at once, use <span class="ui">Users</span> → <span class="ui">Import faculty</span>:</p>
     <ol class="steps">
-        <li>Prepare an Excel or CSV file with the columns <b>Name</b> and <b>Email</b>, and optionally <b>Mobile</b>, <b>Designation</b>, <b>Department</b>, <b>Campus</b> (branch code, e.g. DEL) and <b>Role</b>: Faculty / Panel Member, Committee Member or Committee Chairperson, with several separated by ";".</li>
+        <li>Click <span class="ui">Download the faculty template</span> in the dialog (or use <span class="ui">Imports</span> → <span class="ui">Import templates</span> → <b>Faculty</b>, where you can choose, order and rename its columns). Fill it in: <b>Name</b> and <b>Email</b>, and optionally <b>Mobile</b>, <b>Designation</b>, <b>Department</b>, <b>Campus</b> (branch code, e.g. DEL) and <b>Role</b>: Faculty / Panel Member, Committee Member or Committee Chairperson, with several separated by ";". The second sheet of the template explains every column.</li>
         <li>Choose the file. Tick <b>Also give the Committee Member role</b> if panel members are also committee members.</li>
         <li>Click <span class="ui">Check the file</span>. Each row shows whether the person is new, existing (gets the roles) or unchanged, or has an error such as a bad email, an unknown campus or a duplicate.</li>
         <li>Click <span class="ui">Confirm and send invitations</span>. New people get an invitation email. Existing people only gain roles; nothing is ever removed.</li>
@@ -264,6 +264,17 @@
 
     <h2>Sources</h2>
     <p>A <b>source</b> is where applicant data comes from, normally the <i>Admission portal</i>. In <span class="ui">Sources</span> (Super Admin), add the source and, if the portal will send data through the API, create a <b>source token</b>. It is shown once only; give it to the portal's technical team.</p>
+
+    <h2>Import templates (students and faculty)</h2>
+    <p>When the portal's own export is not used, give the admission office a template to fill. <span class="ui">Imports</span> → <span class="ui">Import templates</span>:</p>
+    <ol class="steps">
+        <li><b>Columns in the template</b>: the list in the order they appear in the file. Rename any heading (for example "Application No" → "Form No."), move columns with ↑ ↓, and remove the ones you do not need with ✕. Required columns (application number, name, CAT/IPMAT number, email, mobile, date of birth, gender, category, Class 10 and Class 12 marks) cannot be removed.</li>
+        <li><b>Add columns</b>: pick any standard column (address, graduation details, campus preferences, GD/PI centres, …), or add a <b>column of your own</b> for students: a heading, a type (text, number, date, yes/no, or one of a list of choices), a note for whoever fills it, and whether every row must have a value. Your own columns are kept with each application, shown on its page under <i>extra data</i> and added to the applications export. They are information only: never used in merit.</li>
+        <li><span class="ui">Save template</span>, then <span class="ui">Download template</span>. The Excel file has the headings on its first sheet and, on the second, <b>Instructions</b>: for every column whether it is required, what to enter (with the allowed values, e.g. the category codes and campus codes) and an example. <span class="ui">Instructions (print or PDF)</span> gives the same as a page to print or send.</li>
+        <li>Upload the filled file as usual (<span class="ui">New import</span>). Its columns are matched by heading, so the matching step is already filled in; your own columns are checked by their type and a wrong value (e.g. "XL" when the choices are S, M, L) is shown as an error on that row.</li>
+    </ol>
+    <figure class="shot phone"><div class="frame"><img src="img/import-templates.jpg" alt="Import templates"></div><figcaption>Import templates: rename, order and remove columns</figcaption></figure>
+    <div class="tip">On a server without the PHP zip extension the template is a CSV file with the headings only; print the instructions separately.</div>
 
     <h2>Importing a portal file</h2>
     <p>Only the <b>shortlisted applicants of a round</b> are imported. Every import goes through the same checks, and nothing reaches the applicant records until a second person approves it.</p>
@@ -485,7 +496,8 @@
     </ol>
     <p><b>Restoring</b> (Super Admin only): click <span class="ui">Restore</span> next to a backup, or first <span class="ui">Upload a backup</span> (for example the ZIP from an email). Type <b>RESTORE</b>, your password, and the backup password if it was different. The system first makes a <b>safety backup</b> of the current data, then replaces the database with the backup (a full backup also puts the documents back). Changes made after the backup was taken are lost; anything that went wrong can be undone by restoring the safety backup. A backup from a newer version of the system is refused: update the system first.</p>
     <figure class="shot phone"><div class="frame"><img src="img/backups.jpg" alt="Backups"></div><figcaption>Backups: password, schedule and email, and the backups on the server</figcaption></figure>
-    <div class="tip">The daily backup needs the every-minute cron job. <span class="ui">System health</span> shows a problem when daily backups are off or the last backup is more than a day old. The emailed ZIP holds applicants' personal data: send it only to a mailbox the institution controls.</div>
+    <p>On a server without the PHP zip extension, backups are <b>.sql.gz.enc</b> files (or <b>.sql.enc</b> where PHP also lacks zlib), encrypted the same way with AES-256 and the backup password, and full backups with documents are not available. They restore from the same screen.</p>
+    <div class="tip">The daily backup needs the every-minute cron job. If a backup fails, the reason is shown in red at the top of <span class="ui">Backups</span> and in <span class="ui">System health</span>; the daily backup tries again every 15 minutes, up to three times a day. <span class="ui">System health</span> also shows a problem when daily backups are off or the last backup is more than a day old. The emailed ZIP holds applicants' personal data: send it only to a mailbox the institution controls.</div>
 
     <h2>Health, settings, audit</h2>
     <ul>

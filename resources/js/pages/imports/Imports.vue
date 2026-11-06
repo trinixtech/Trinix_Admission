@@ -89,6 +89,7 @@ async function uploadFile() {
 <template>
     <PageHeader title="Imports" subtitle="Shortlisted applicants from the portal, one round at a time. Nothing is written until someone approves the preview.">
         <button v-if="auth.can('imports.manage')" type="button" class="btn-primary" @click="start('data')">New import</button>
+        <RouterLink to="/imports/templates" class="btn-secondary">Import template</RouterLink>
         <button v-if="auth.can('imports.manage') && auth.can('documents.manage')" type="button" class="btn-secondary" @click="start('documents')">Import documents</button>
     </PageHeader>
     <Alert v-if="err" tone="error">{{ err }}</Alert>
@@ -131,6 +132,9 @@ async function uploadFile() {
                     <template v-else>Columns: portal_application_no, course (optional), document_type, url. Links must be on an allowed host (Settings).</template>
                 </p>
             </template>
+            <p v-if="mode === 'data'" class="text-sm text-slate-600 dark:text-slate-400">
+                A portal export, or the <RouterLink to="/imports/templates" class="btn-link">import template</RouterLink> filled in (its columns are matched for you).
+            </p>
             <div>
                 <label for="imp-file" class="label">File<span class="text-red-700" aria-hidden="true"> *</span></label>
                 <input id="imp-file" type="file" :accept="mode === 'documents' ? (form.kind === 'zip' ? '.zip' : '.csv') : '.csv,.xlsx,text/csv'" class="input py-2" required @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" />

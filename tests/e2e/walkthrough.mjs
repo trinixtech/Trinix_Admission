@@ -294,6 +294,21 @@ try {
     await shot(page, '14-application-mobile');
 
     // ---------------- Phase 3: documents, scrutiny and eligibility ----------------
+    step('Import templates: the Super Admin adds a column of their own and downloads the template with its instructions');
+    await page.goto(`${BASE}/imports/templates`);
+    await expectText(page, 'Columns in the template');
+    await page.getByLabel(label('Heading')).fill('Hostel required');
+    await page.getByLabel(label('Type')).selectOption('yesno');
+    await page.getByRole('button', { name: 'Add column' }).click();
+    await page.getByRole('button', { name: 'Save template' }).click();
+    await expectText(page, 'Template saved');
+    const [tpl] = await Promise.all([page.waitForEvent('download'), page.getByRole('link', { name: /Download template/ }).click()]);
+    if (!tpl.suggestedFilename().endsWith(LIMITED ? '.csv' : '.xlsx')) throw new Error(`Template: ${tpl.suggestedFilename()}`);
+    if (LIMITED && !(await import('node:fs')).readFileSync(await tpl.path(), 'utf8').includes('Hostel required')) throw new Error('Template lacks the new column');
+    const ins = await page.request.get(`${BASE}/api/v1/import-layouts/students/instructions`, { headers: { Referer: `${BASE}/imports/templates` } });
+    if (LIMITED ? !(await ins.text()).includes('Hostel required') : !(await ins.body()).subarray(0, 4).equals(Buffer.from('%PDF'))) throw new Error('Template instructions');
+    await shot(page, '10b-import-template');
+
     step('Files (optional): Super Admin loads the suggested document types');
     await page.goto(`${BASE}/documents/types`);
     await page.getByRole('button', { name: 'Load the suggested types' }).click();

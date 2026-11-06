@@ -87,10 +87,11 @@ class HealthCheck
         $latest = $backups->list()[0] ?? null;
         $settings = $backups->settings();
         $age = $latest ? now()->diffInHours($latest['created_at'], true) : null;
+        $failed = BackupService::lastError();
         $checks['backups'] = [
-            'ok' => $settings['enabled'] && $latest !== null && $age <= 26,
-            'detail' => ! $settings['enabled'] ? 'Daily backups are off (System → Backups).'
-                : ($latest ? 'Last backup '.$latest['created_at'].' ('.BackupService::humanSize($latest['size']).'), '.count($backups->list()).' kept.' : 'No backup made yet.'),
+            'ok' => $settings['enabled'] && $latest !== null && $age <= 26 && ! $failed,
+            'detail' => ($failed ? 'The last backup failed ('.$failed['at'].'): '.$failed['message'].' ' : '').(! $settings['enabled'] ? 'Daily backups are off (System → Backups).'
+                : ($latest ? 'Last backup '.$latest['created_at'].' ('.BackupService::humanSize($latest['size']).'), '.count($backups->list()).' kept.' : 'No backup made yet.')),
         ];
 
         return [

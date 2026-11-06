@@ -92,6 +92,8 @@ Sign in as Super Admin → **System → Backups**:
 
 The backups are made by PHP (no `mysqldump`), only from this app's own database, by the same every-minute cron job. Restoring (Super Admin only) makes a safety backup first. cPanel's own backups remain a good second layer.
 
+Without the PHP zip extension (limited mode) backups are `.sql.gz.enc` files (`.sql.enc` if PHP has no zlib either), AES-256 with the backup password, encrypted in 1 MB pieces so they work within shared-hosting memory limits. If a backup fails, the reason is shown at the top of System → Backups and in System → Health; the daily backup is retried every 15 minutes, at most three times a day.
+
 ## 7. Updates
 
 1. Upload and extract the new release ZIP as in §3.

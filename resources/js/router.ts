@@ -38,6 +38,7 @@ const routes: RouteRecordRaw[] = [
     { path: '/teams/:uid', component: () => import('@/pages/teams/TeamDetail.vue'), props: true, meta: { permission: 'teams.view', title: 'Team' } },
 
     { path: '/imports', component: () => import('@/pages/imports/Imports.vue'), meta: { permission: 'imports.view', title: 'Imports' } },
+    { path: '/imports/templates', component: () => import('@/pages/imports/ImportTemplates.vue'), meta: { permission: ['imports.view', 'users.manage'], title: 'Import templates' } },
     { path: '/imports/:uid', component: () => import('@/pages/imports/BatchDetail.vue'), props: true, meta: { permission: 'imports.view', title: 'Import batch' } },
     { path: '/sources', component: () => import('@/pages/imports/Sources.vue'), meta: { permission: ['imports.view', 'sources.manage'], title: 'Sources' } },
     { path: '/applications', component: () => import('@/pages/applicants/Applications.vue'), meta: { permission: 'applicants.view', title: 'Applications' } },

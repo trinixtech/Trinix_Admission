@@ -143,8 +143,57 @@ class RowNormalizer
         if (! empty($mapped['extra'])) {
             $out['extra'] = $mapped['extra'];
         }
+        $this->customs($out, $errors);
 
         return [$out, $errors];
+    }
+
+    /**
+     * The admin's own columns (import templates): checked by their type and kept in "extra" under their heading.
+     * A required column must have a value when the file has that column.
+     */
+    private function customs(array &$out, array &$errors): void
+    {
+        if (! $this->context->customColumns) {
+            return;
+        }
+        $extra = $out['extra'] ?? [];
+        $byNorm = [];
+        foreach (array_keys($extra) as $h) {
+            $byNorm[ImportLayouts::norm((string) $h)] ??= $h;
+        }
+        foreach ($this->context->customColumns as $c) {
+            $n = ImportLayouts::norm($c['header']);
+            $h = $byNorm[$n] ?? null;
+            $field = 'custom.'.$c['custom'];
+            if ($h === null) {
+                if ($c['required'] && isset($this->context->fileHeaders[$n])) {
+                    $errors[] = ['field' => $field, 'message' => "{$c['header']} is required."];
+                }
+
+                continue;
+            }
+            $s = trim((string) $extra[$h]);
+            unset($extra[$h]);
+            [$value, $message] = match ($c['type']) {
+                'number' => ($d = $this->decimal($s)) === null ? [null, 'Must be a number.'] : [$d, null],
+                'date' => $this->date($s, false),
+                'yesno' => ($b = $this->bool($s))[1] === null ? [$b[0] ? 'Yes' : 'No', null] : $b,
+                'choice' => $this->option($s, $c['options']),
+                default => mb_strlen($s) > 255 ? [null, 'Too long (at most 255 characters).'] : [preg_replace('/\s+/u', ' ', $s), null],
+            };
+            if ($message !== null) {
+                $errors[] = ['field' => $field, 'message' => "{$c['header']}: ".str_replace(' Add a value mapping.', '', $message)];
+
+                continue;
+            }
+            $extra[$c['header']] = $value;
+        }
+        if ($extra) {
+            $out['extra'] = $extra;
+        } else {
+            unset($out['extra']);
+        }
     }
 
     /** @return array{0: mixed, 1: ?string} */
@@ -192,7 +241,7 @@ class RowNormalizer
         return [null, 'Not a valid mobile number.'];
     }
 
-    private function date(string $s): array
+    private function date(string $s, bool $past = true): array
     {
         // Numbers (22-11-2000, 2000-11-22) and month names (22-Nov-2000, 22 November 2000), the way portals print them.
         $s = preg_replace('/\s+/', ' ', $s);
@@ -201,7 +250,7 @@ class RowNormalizer
             if ($d && strcasecmp($d->format($format), $s) === 0) {
                 $year = (int) $d->format('Y');
 
-                return $year >= 1940 && $d <= new DateTimeImmutable('today')
+                return $year >= 1940 && $year <= 2100 && (! $past || $d <= new DateTimeImmutable('today'))
                     ? [$d->format('Y-m-d'), null] : [null, 'Date is out of range.'];
             }
         }

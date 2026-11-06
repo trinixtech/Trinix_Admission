@@ -9,7 +9,8 @@ import { dateTime } from '@/lib/format';
 
 /** System → Backups: encrypted backups, the daily schedule and email, downloads, upload and restore. */
 interface Backup { name: string; kind: 'db' | 'full' | 'upload'; size: number; created_at: string; safety: boolean }
-const d = ref<{ settings: any; backups: Backup[]; can_restore: boolean; max_upload_mb: number; format: 'zip' | 'openssl' } | null>(null);
+const d = ref<{ settings: any; backups: Backup[]; can_restore: boolean; max_upload_mb: number; format: 'zip' | 'openssl'; compressed: boolean;
+    last_error: { at: string; trigger: string; kind: string; message: string } | null } | null>(null);
 const form = ref<any>({});
 const pw = ref({ password: '', password_confirmation: '' });
 const msg = ref('');
@@ -82,6 +83,10 @@ const upload = () => act('upload', () => {
     <Alert v-if="err" tone="error">{{ err }}</Alert>
 
     <template v-if="d">
+        <Alert v-if="d.last_error" tone="error">
+            The last backup failed ({{ dateTime(d.last_error.at) }}, {{ d.last_error.trigger === 'schedule' ? 'daily schedule' : 'made by hand' }}): {{ d.last_error.message }}
+            The daily backup tries again every 15 minutes, up to 3 times a day. This message goes away after a backup succeeds.
+        </Alert>
         <div class="mb-6 grid gap-4 sm:grid-cols-3">
             <div class="card"><p class="text-sm text-slate-600 dark:text-slate-400">Daily backup</p><p class="text-lg font-semibold">{{ d.settings.enabled ? `On, at ${d.settings.time} IST` : 'Off' }}</p></div>
             <div class="card"><p class="text-sm text-slate-600 dark:text-slate-400">Last backup</p><p class="text-lg font-semibold">{{ latest ? dateTime(latest.created_at) : 'None yet' }}</p></div>
@@ -130,8 +135,10 @@ const upload = () => act('upload', () => {
             </div>
             <p class="mb-3 text-sm text-slate-600 dark:text-slate-400">"Back up now" also emails it, if addresses are set. Full backups include the documents and are not emailed.</p>
             <p v-if="d.format === 'openssl'" class="mb-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-900/40 dark:text-amber-100">
-                This server has no PHP zip extension, so backups are <b>.sql.gz.enc</b> files encrypted with AES-256 (OpenSSL) and the backup password, and full backups with documents are not available.
-                Restore them here. Outside the app they open with: <code class="break-all">openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -in FILE | gunzip &gt; database.sql</code>
+                This server has no PHP zip extension, so backups are <b>{{ d.compressed ? '.sql.gz.enc' : '.sql.enc' }}</b> files encrypted with AES-256 (OpenSSL) and the backup password, and full backups with documents are not available.
+                Restore them here. Outside the app they open with:
+                <code class="break-all">openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -in FILE {{ d.compressed ? '| gunzip ' : '' }}&gt; database.sql</code>
+                <template v-if="d.compressed">(a .sql.enc file: without "| gunzip")</template>
             </p>
             <ul class="divide-y divide-slate-100 dark:divide-slate-800">
                 <li v-for="b in d.backups" :key="b.name" class="flex flex-wrap items-center justify-between gap-2 py-3">

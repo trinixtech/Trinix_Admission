@@ -57,7 +57,8 @@ async function loadMappingData() {
     fields.value = f.data.data;
     sample.value = s.data.data;
     templates.value = t.data.data;
-    applyMaps(batch.value.column_map ?? guess(), batch.value.value_map ?? {});
+    // Before the first mapping, column_map is the suggestion from the admin's template: add the usual guesses to it.
+    applyMaps(batch.value.status === 'uploaded' ? { ...guess(), ...(batch.value.column_map ?? {}) } : (batch.value.column_map ?? guess()), batch.value.value_map ?? {});
 }
 
 /** Pre-select columns whose header looks like the field label. */

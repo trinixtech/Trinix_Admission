@@ -25,12 +25,20 @@ class ImportContext
 
     public int $cycleId;
 
+    /** @var list<array{custom: string, header: string, type: string, options: list<string>, required: bool}> the admin's own columns */
+    public array $customColumns;
+
+    /** @var array<string, true> normalised headings of the file */
+    public array $fileHeaders;
+
     public function __construct(ImportBatch $batch)
     {
         $batch->loadMissing('round', 'course');
         $this->cycleId = $batch->round->admission_cycle_id;
         $this->batchCourseId = $batch->course_id;
         $this->batchCourseCode = $batch->course?->code;
+        $this->customColumns = app(ImportLayouts::class)->customColumns();
+        $this->fileHeaders = array_fill_keys(array_map(fn ($h) => ImportLayouts::norm((string) $h), $batch->headers ?? []), true);
         $this->courses = Course::all()->keyBy(fn ($c) => strtoupper($c->code))->all();
         $this->branches = [];
         // A campus is found by its code or name, or (when only one campus fits) by its name without the word

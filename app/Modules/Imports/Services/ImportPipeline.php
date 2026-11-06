@@ -62,6 +62,7 @@ class ImportPipeline
                 'original_filename' => mb_substr($file->getClientOriginalName(), 0, 255),
                 'file_sha256' => $sha,
                 'headers' => $info['headers'],
+                'column_map' => app(ImportLayouts::class)->columnMap($info['headers']) ?: null, // a suggestion from the admin's template; saved only on Map
                 'rows_total' => $info['rows'],
                 'uploaded_by' => $user->id,
             ]);

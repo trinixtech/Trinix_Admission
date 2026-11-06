@@ -43,6 +43,7 @@ export const NAV: NavGroup[] = [
         hint: 'Shortlisted students, their files, and the portal source',
         items: [
             { to: '/imports', label: 'Student imports', perm: ['imports.view'] },
+            { to: '/imports/templates', label: 'Import templates', perm: ['imports.view', 'users.manage'] },
             { to: '/applications', label: 'Applications', perm: ['applicants.view'] },
             { to: '/documents/types', label: 'Document types (file import)', perm: ['documents.manage'] },
             { to: '/sources', label: 'Sources', perm: ['imports.view', 'sources.manage'] },

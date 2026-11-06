@@ -20,7 +20,7 @@ class SettingController extends Controller
             $this->access()->authorize($this->actor(), 'settings.technical');
         }
 
-        return response()->json(['data' => SystemSetting::where('key', '!=', BackupService::SETTING)->orderBy('key')->get()->map(fn (SystemSetting $s) => [
+        return response()->json(['data' => SystemSetting::where('key', '!=', BackupService::SETTING)->where('key', 'not like', 'import_layout.%')->orderBy('key')->get()->map(fn (SystemSetting $s) => [
             'key' => $s->key,
             'value' => $s->value,
             'description' => $s->description,
@@ -32,7 +32,7 @@ class SettingController extends Controller
 
     public function update(Request $request, SystemSetting $setting): JsonResponse
     {
-        abort_if($setting->key === BackupService::SETTING, 404);
+        abort_if($setting->key === BackupService::SETTING || str_starts_with($setting->key, 'import_layout.'), 404);
         $actor = $this->actor();
         $allowed = $this->access()->can($actor, 'settings.manage')
             || ($setting->is_technical && $this->access()->can($actor, 'settings.technical'));

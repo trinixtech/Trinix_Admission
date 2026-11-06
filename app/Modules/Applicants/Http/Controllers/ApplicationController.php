@@ -10,6 +10,7 @@ use App\Modules\Applicants\Services\ApplicationAccess;
 use App\Modules\Cycles\Models\AdmissionCycle;
 use App\Modules\Cycles\Models\AdmissionRound;
 use App\Modules\Imports\Models\ImportRecord;
+use App\Modules\Imports\Services\ImportLayouts;
 use App\Modules\Merit\Services\MeritService;
 use App\Modules\Organisation\Models\Course;
 use App\Modules\Selection\Services\PanelAccess;
@@ -60,21 +61,24 @@ class ApplicationController extends Controller
     {
         $this->access()->authorizeAnywhere($this->actor(), 'applicants.view');
         $query = $this->listQuery($request)->addSelect('applications.id', 'applicants.email', 'applicants.mobile', 'applicants.gender', 'applicants.city',
-            'applications.interview_centres', 'cycles.name as cycle_name')->join('admission_cycles as cycles', 'cycles.id', '=', 'applications.admission_cycle_id');
+            'applications.interview_centres', 'applications.extra', 'cycles.name as cycle_name')->join('admission_cycles as cycles', 'cycles.id', '=', 'applications.admission_cycle_id');
         $total = (clone $query)->count();
         if ($total > 50000) {
             $this->fail('q', "$total applications match. Narrow the filters to 50,000 or fewer.");
         }
         $this->audit()->record('applications.exported', null, null, ['rows' => $total, 'filters' => array_filter($request->only(['q', 'course_uid', 'cycle_uid', 'round_uid', 'category', 'status']))]);
-        $rows = (function () use ($query) {
+        $own = array_map(fn ($c) => $c['header'], app(ImportLayouts::class)->customColumns()); // the admin's own template columns
+        $rows = (function () use ($query, $own) {
             foreach ($query->cursor() as $a) {
+                $extra = is_array($a->extra) ? $a->extra : [];
                 yield [$a->portal_application_no, $a->full_name, $a->course_code, $a->cycle_name, $a->category, (bool) $a->pwbd, $a->gender, $a->email, $a->mobile, $a->city,
-                    $a->exam, $a->entrance_application_no, $a->percentile === null ? null : (float) $a->percentile, implode(', ', array_values($a->interview_centres ?? [])), $a->status];
+                    $a->exam, $a->entrance_application_no, $a->percentile === null ? null : (float) $a->percentile, implode(', ', array_values($a->interview_centres ?? [])), $a->status,
+                    ...array_map(fn ($h) => $extra[$h] ?? null, $own)];
             }
         })();
 
         return Spreadsheet::download('applications-'.now(config('app.display_timezone'))->format('Ymd-His'), ['Application number', 'Name', 'Course', 'Cycle', 'Category', 'PwBD', 'Gender', 'Email',
-            'Mobile', 'City', 'Exam', 'Exam application number', 'Percentile', 'GD/PI centre preferences', 'Status'], $rows);
+            'Mobile', 'City', 'Exam', 'Exam application number', 'Percentile', 'GD/PI centre preferences', 'Status', ...$own], $rows);
     }
 
     private function listQuery(Request $request): \Illuminate\Database\Eloquent\Builder

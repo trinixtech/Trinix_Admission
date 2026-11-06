@@ -16,6 +16,7 @@ use App\Modules\Cycles\Http\Controllers\WorkflowController;
 use App\Modules\Documents\Http\Controllers\DocumentController;
 use App\Modules\Documents\Http\Controllers\DocumentTypeController;
 use App\Modules\Imports\Http\Controllers\ImportBatchController;
+use App\Modules\Imports\Http\Controllers\ImportLayoutController;
 use App\Modules\Imports\Http\Controllers\IntegrationController;
 use App\Modules\Imports\Http\Controllers\SourceController;
 use App\Modules\Imports\Http\Middleware\AuthenticateSource;
@@ -120,6 +121,10 @@ Route::prefix('v1')->group(function () {
 
         // Imports
         Route::get('import-fields', [SourceController::class, 'fields']);
+        Route::get('import-layouts/{kind}', [ImportLayoutController::class, 'show']);
+        Route::put('import-layouts/{kind}', [ImportLayoutController::class, 'update']);
+        Route::get('import-layouts/{kind}/template', [ImportLayoutController::class, 'template']);
+        Route::get('import-layouts/{kind}/instructions', [ImportLayoutController::class, 'instructions']);
         Route::get('sources', [SourceController::class, 'index']);
         Route::post('sources', [SourceController::class, 'store']);
         Route::patch('sources/{source}', [SourceController::class, 'update']);

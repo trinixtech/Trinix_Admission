@@ -56,6 +56,11 @@ const label: Record<string, string> = { new: 'New, will be invited', existing: '
         <Alert v-if="err" tone="error">{{ err }}</Alert>
         <template v-if="!preview && !result">
             <p class="mb-3 text-sm">Excel or CSV with columns <b>Name</b>, <b>Email</b>, and optionally Mobile, Designation, Department, Campus (branch code) and Role (Faculty / Panel Member, Committee Member, Committee Chairperson; several separated by ";"). Existing people only gain roles.</p>
+            <p class="mb-3 text-sm">
+                <a href="/api/v1/import-layouts/faculty/template" class="btn-link">Download the faculty template</a> ·
+                <a href="/api/v1/import-layouts/faculty/instructions" target="_blank" rel="noopener" class="btn-link">instructions</a> ·
+                <RouterLink to="/imports/templates?kind=faculty" class="btn-link">change its columns</RouterLink>
+            </p>
             <label class="label" for="fac-file">File</label>
             <input id="fac-file" type="file" accept=".csv,.xlsx" class="input py-2" @change="file = ($event.target as HTMLInputElement).files?.[0] ?? null" />
             <label class="mt-3 flex min-h-11 items-center gap-3"><input v-model="committee" type="checkbox" class="size-5" /> Also give the Committee Member role</label>

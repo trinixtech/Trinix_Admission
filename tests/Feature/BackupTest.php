@@ -3,6 +3,7 @@
 use App\Modules\Audit\Models\AuditLog;
 use App\Modules\Organisation\Models\Institution;
 use App\Modules\System\Mail\BackupMail;
+use App\Modules\System\Models\SystemSetting;
 use App\Modules\System\Services\BackupService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Mail;
@@ -189,4 +190,63 @@ it('makes, opens and restores OpenSSL-encrypted backups when the server has no z
     $this->post('/api/v1/system/backups/upload', ['file' => new UploadedFile($copy, $info['name'], 'application/octet-stream', null, true)], ['Accept' => 'application/json'])
         ->assertCreated()->assertJsonPath('data.kind', 'upload');
     $this->get('/api/v1/system/backups/'.$info['name'].'/download')->assertOk();
+});
+
+it('encrypts large files in pieces that the openssl tool still opens, and refuses a wrong password', function () {
+    $dir = sys_get_temp_dir();
+    $plain = tempnam($dir, 'pl');
+    file_put_contents($plain, random_bytes(2 * 1048576 + 1234)); // more than two pieces, not a multiple of 16
+    $sealed = tempnam($dir, 'se');
+    BackupService::sealFile($plain, $sealed, 'pw-123456789012');
+    $out = tempnam($dir, 'ou');
+    expect(BackupService::unsealFile($sealed, $out, 'pw-123456789012'))->toBeTrue()
+        ->and(md5_file($out))->toBe(md5_file($plain))
+        ->and(BackupService::unsealFile($sealed, $out, 'wrong-password-1'))->toBeFalse();
+    $cli = tempnam($dir, 'cl');
+    shell_exec('openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -pass pass:pw-123456789012 -in '.escapeshellarg($sealed).' -out '.escapeshellarg($cli));
+    expect(md5_file($cli))->toBe(md5_file($plain));
+    array_map('unlink', [$plain, $sealed, $out, $cli]);
+});
+
+it('shows a failed backup on the page and in Health, and retries the daily one at most 3 times', function () {
+    $this->actingAs($this->admin)->postJson('/api/v1/system/backups', ['kind' => 'db'])->assertUnprocessable(); // no password yet
+    expect($this->getJson('/api/v1/system/backups')->json('data.last_error.message'))->toContain('backup password');
+
+    backupPassword($this);
+    $this->putJson('/api/v1/system/backups/settings', ['enabled' => true, 'time' => '00:00'])->assertOk();
+    $svc = app(BackupService::class);
+    $setting = SystemSetting::where('key', BackupService::SETTING)->first();
+    $good = $setting->value;
+    $setting->update(['value' => ['password' => 'not-decryptable'] + $good]); // e.g. APP_KEY changed since the password was saved
+    foreach (range(1, 4) as $i) {
+        try {
+            $svc->runScheduled();
+        } catch (Throwable) {
+        }
+    }
+    $setting->update(['value' => $good]);
+    expect((int) cache('backup:tries:'.now(config('app.display_timezone'))->toDateString()))->toBe(3)
+        ->and(BackupService::lastError()['trigger'])->toBe('schedule')
+        ->and(BackupService::lastError()['message'])->toContain('Set the backup password again');
+
+    cache()->forget('backup:tries:'.now(config('app.display_timezone'))->toDateString());
+    expect($svc->runScheduled())->not->toBeNull()
+        ->and(BackupService::lastError())->toBeNull()
+        ->and($svc->runScheduled())->toBeNull(); // once a day
+});
+
+it('makes uncompressed .sql.enc backups when PHP has no zlib, and restores them', function () {
+    config(['backups.format' => 'openssl', 'backups.compress' => false]);
+    backupPassword($this);
+    Institution::create(['code' => 'KEEP', 'name' => 'Kept institution']);
+    $info = $this->postJson('/api/v1/system/backups', ['kind' => 'db'])->assertCreated()->json('data');
+    expect($info['name'])->toEndWith('.sql.enc')->not->toEndWith('.gz.enc');
+    $path = storage_path('app/backups/'.$info['name']);
+    $cmd = 'openssl enc -d -aes-256-cbc -pbkdf2 -iter 100000 -md sha256 -pass pass:a-long-backup-password -in '.escapeshellarg($path);
+    expect((string) shell_exec($cmd))->toStartWith('-- trinix-admission-backup ');
+    expect(collect($this->getJson('/api/v1/system/backups')->json('data.backups'))->pluck('name'))->toContain($info['name']);
+
+    Institution::where('code', 'KEEP')->delete();
+    $this->postJson('/api/v1/system/backups/'.$info['name'].'/restore', ['confirm' => 'RESTORE', 'password' => 'correct-horse-battery'])->assertOk();
+    expect(Institution::where('code', 'KEEP')->exists())->toBeTrue();
 });
