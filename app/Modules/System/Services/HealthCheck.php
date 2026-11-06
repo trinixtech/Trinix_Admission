@@ -113,7 +113,8 @@ class HealthCheck
         try {
             return ['ok' => true, 'detail' => (string) $fn()];
         } catch (Throwable $e) {
-            return ['ok' => false, 'detail' => class_basename($e)];
+            // Shown only to signed-in IT staff (System → Health); /up exposes only true/false.
+            return ['ok' => false, 'detail' => class_basename($e).': '.Str::limit(preg_replace('/\s+/', ' ', $e->getMessage()), 220)];
         }
     }
 }
