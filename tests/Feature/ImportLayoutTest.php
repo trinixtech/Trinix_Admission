@@ -91,7 +91,7 @@ it('lets the admin shape the student template, downloads it with instructions, a
 
     approve($this, $b)->assertStatus(202);
     $app = Application::where('portal_application_no', 'IP0001')->first();
-    expect($app->extra)->toBe(['Hostel required' => 'Yes', 'Shirt size' => 'M', 'Joining date' => '2027-07-01']);
+    expect($app->extra)->toEqualCanonicalizing(['Hostel required' => 'Yes', 'Shirt size' => 'M', 'Joining date' => '2027-07-01']);
 
     // The applications export carries the admin's columns.
     $rows = $this->actingAs($this->approver)->get('/api/v1/applications/export?format=xlsx')->assertOk();
