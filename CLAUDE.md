@@ -12,6 +12,7 @@ Interview-based admission (Main product, split from Trinix Admiso 0.8.0). Read `
   - Admin lock; merit lists.
   - Installation wizard and Maintenance page.
   - Dashboard: admission workflow per course and round (`WorkflowController`, live counts and next step); today's interviews for panel members.
+- **1.1.0:** System → Backups (`BackupService`: PHP SQL dump, AES-256 ZIP with the admin's backup password, daily schedule at a set IST time with email, weekly full backup with documents, restore with a safety backup); printable login sheet for panel and committee members (`LoginSheetController`, temporary password, change forced at first sign-in); cleaner marks entry.
 - The optional modules live in Trinix Admiso (repository `trinixtech/Trinix-Admiso`); do not add them here unless the user asks.
 - Releases: a version (workflow_dispatch input, e.g. `1.0.0`) builds the upload-ready ZIP on the GitHub Release. The user uploads it by hand (cPanel File Manager, Extract) with the subdomain's document root at `public/`; FTP upload is optional and not used (`.github/workflows/release.yml`, `docs/DEPLOYMENT.md`).
 
@@ -41,4 +42,6 @@ node tests/e2e/walkthrough.mjs   # browser walk-through (app must be running, DO
 - **No SSH on the host:** nothing may depend on running artisan, composer or npm on the server; migrations run from System → Maintenance.
 - **Installer:** `/install` runs without sessions or cookies, is open only until the first Super Admin exists, and uses `AccessCatalog::sync()`.
 - **Privacy:** DPDP Act 2023; no secrets or personal data in logs.
+- **Backups:** only through `BackupService`; always encrypted with the backup password (stored encrypted, never shown, logged or emailed); only this app's own database is read or replaced; restore needs `backups.restore`, RESTORE + the admin's password, and makes a safety backup first.
+- **Login sheets:** temporary passwords are shown once and never stored or audited in plain text; roles that need two-factor never get one.
 - **UI:** English only, mobile first (360 px), 44 px touch targets, light and dark themes.

@@ -82,13 +82,23 @@ No sample or demo data is shipped or loaded: the system starts empty apart from 
 - Remember that documents are **not virus-scanned** in test mode.
 - Delete the data (or the whole database) when testing ends.
 
-## 6. Updates
+## 6. Backups
+
+Sign in as Super Admin → **System → Backups**:
+
+1. Set a **backup password** (12+ characters) and keep it somewhere safe. Every backup is an AES-256 encrypted ZIP; without the password it cannot be opened.
+2. Tick **Make a database backup every day**, choose the time (IST), and add up to three email addresses. The encrypted ZIP is emailed (a notice instead if it is larger than the limit); a weekly full backup with the documents stays on the server.
+3. Backups are kept in `storage/app/backups` (outside the website). **Download** one now and then, or rely on the emails, so a copy exists off the server.
+
+The backups are made by PHP (no `mysqldump`), only from this app's own database, by the same every-minute cron job. Restoring (Super Admin only) makes a safety backup first. cPanel's own backups remain a good second layer.
+
+## 7. Updates
 
 1. Upload and extract the new release ZIP as in §3.
-2. Sign in as **IT Administrator** (or Super Admin): **System → Maintenance** lists any pending database updates. Take a backup in cPanel first, then type `MIGRATE` and your password.
+2. Sign in as **IT Administrator** (or Super Admin): **System → Maintenance** lists any pending database updates. Take a backup first (System → Backups → Back up now), then type `MIGRATE` and your password.
 3. If the screens look old, reload the page: built files have new names in each release.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Check |
 | --- | --- |

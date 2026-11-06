@@ -242,6 +242,17 @@
     </ol>
     <figure class="shot"><div class="frame"><img src="img/import-faculty.jpg" alt="Import faculty"></div><figcaption>Import faculty</figcaption></figure>
 
+    <h3>Login sheet for panel and committee members</h3>
+    <p>Instead of email links, panel and committee members can be given a printed slip with their sign-in details. <span class="ui">Users</span> → <span class="ui">Login sheet</span>:</p>
+    <ol class="steps">
+        <li>Tick the people (by default, everyone who has never signed in). Search by name, email or role.</li>
+        <li>Click <span class="ui">Make passwords for …</span>. Each person gets a new temporary password, such as <span class="path">k7mq-3hxp-9tbw</span> (no look-alike letters). Their old password and any invitation link stop working.</li>
+        <li>Click <span class="ui">Print the sheet</span>: one slip per person with the website, their email and the password. <b>The passwords are not shown again</b>; for a lost slip, make a new sheet for that person.</li>
+        <li>At first sign-in the person must choose their own password before anything else opens.</li>
+    </ol>
+    <p>Administrators (roles that need two-factor sign-in) are not offered a sheet: they use invitation links. Every sheet is recorded in the audit log, never with the passwords.</p>
+    <figure class="shot phone"><div class="frame"><img src="img/login-sheet.jpg" alt="Login sheet"></div><figcaption>The passwords, shown once, ready to print</figcaption></figure>
+
     <h2>Roles and permissions, teams</h2>
     <p><span class="ui">Roles and permissions</span> shows what each role may do (see Chapter 10). Only the Super Admin can change a role's permissions. <span class="ui">Teams</span> holds committees and admission cells, with their members and history.</p>
 </section>
@@ -356,10 +367,10 @@
     <ol class="steps">
         <li>Sign in and open <span class="ui">My interviews</span>. Choose the <b>date</b> if it is not today.</li>
         <li>Your panel, venue (or meeting link) and the <b>time slots</b> are shown. Tap a slot.</li>
-        <li>When a candidate arrives, tap <span class="ui">Present</span> (or <span class="ui">Absent</span>). On a panel without a chair, any member can do this.</li>
-        <li>Enter the marks for each criterion. In a <b>GD</b> slot you see the whole group, one card per candidate. In a <b>PI</b> slot you see one candidate, with − and + buttons that change the marks in steps of 0.5. "✓ Saved" shows that your marks are stored.</li>
+        <li>When a candidate arrives, tap <span class="ui">Present</span> (or <span class="ui">Absent</span>) on their card. On a panel without a chair, any member can do this.</li>
+        <li>Enter the marks for each criterion: type them, or use − and + (steps of 0.5). The <b>total</b> and a bar at the top of the card update as you go. A mark above the maximum turns red and is not saved until corrected. The bar at the top of the screen shows "✓ Saved" when your marks are stored, and how many candidates of the slot are done.</li>
         <li>Add <b>remarks</b> where the stage requires them.</li>
-        <li>Tap <span class="ui">Submit marks</span> (PI) or <span class="ui">Submit marks for this group</span> (GD). You cannot change submitted marks; the admin locks the results when every member has submitted.</li>
+        <li>Tap <span class="ui">Submit</span> (PI; the button shows the total) or <span class="ui">Submit marks for this group</span> (GD). Submitted and absent candidates fold into one line; tap a line to open it again. You cannot change submitted marks; the admin locks the results when every member has submitted.</li>
     </ol>
     <div class="phones">
         <figure class="shot phone tall"><div class="frame"><img src="img/phone-my-interviews.jpg" alt="GD marking"></div><figcaption>A GD slot on a phone</figcaption></figure>
@@ -429,14 +440,25 @@
     <p>Upload the new release over the old one, keeping the <span class="path">.env</span> file and the <span class="path">storage</span> folder. Then an IT Administrator opens <span class="ui">System</span> → <span class="ui">Maintenance</span>. If database updates are pending they are listed: <b>take a backup first</b>, type <b>MIGRATE</b> and your password, and click <span class="ui">Apply updates</span>.</p>
     <figure class="shot"><div class="frame"><img src="img/maintenance.jpg" alt="Maintenance"></div><figcaption>Maintenance: pending database updates</figcaption></figure>
 
+    <h2>Backups</h2>
+    <p><span class="ui">System</span> → <span class="ui">Backups</span> (Super Admin). Backups are made by the system itself, so no command-line access is needed.</p>
+    <ol class="steps">
+        <li><b>Backup password</b> (at least 12 characters). Every backup is an encrypted ZIP (AES-256) that opens only with it. It is never shown again or emailed: keep it in a safe place. Changing it affects new backups only.</li>
+        <li><b>Schedule and email</b>: tick <b>Make a database backup every day</b>, choose the time (IST), how many to keep, the day of the weekly <b>full backup</b> (database and documents), and up to three email addresses. The daily backup is emailed as the encrypted ZIP; if it is larger than the limit you set, a notice is sent instead and the file stays on the server.</li>
+        <li><span class="ui">Back up now</span> makes (and emails) a database backup at once; <span class="ui">Full backup now</span> includes the documents. <span class="ui">Download</span> saves a backup to your computer; every download is recorded.</li>
+    </ol>
+    <p><b>Restoring</b> (Super Admin only): click <span class="ui">Restore</span> next to a backup, or first <span class="ui">Upload a backup</span> (for example the ZIP from an email). Type <b>RESTORE</b>, your password, and the backup password if it was different. The system first makes a <b>safety backup</b> of the current data, then replaces the database with the backup (a full backup also puts the documents back). Changes made after the backup was taken are lost; anything that went wrong can be undone by restoring the safety backup. A backup from a newer version of the system is refused: update the system first.</p>
+    <figure class="shot phone"><div class="frame"><img src="img/backups.jpg" alt="Backups"></div><figcaption>Backups: password, schedule and email, and the backups on the server</figcaption></figure>
+    <div class="tip">The daily backup needs the every-minute cron job. <span class="ui">System health</span> shows a problem when daily backups are off or the last backup is more than a day old. The emailed ZIP holds applicants' personal data: send it only to a mailbox the institution controls.</div>
+
     <h2>Health, settings, audit</h2>
     <ul>
-        <li><span class="ui">System health</span>: database, Redis, storage, the virus scanner, the scheduler (cron) and the queues. A warning here needs IT attention.</li>
+        <li><span class="ui">System health</span>: database, Redis, storage, the virus scanner, the scheduler (cron), the queues and the last backup. A warning here needs IT attention.</li>
         <li><span class="ui">Settings</span>: for example the session timeout, sign-in lock rules, invitation expiry, support email, deficiency reply days, and allowed document-link websites. Technical settings belong to the IT Administrator.</li>
         <li><span class="ui">Audit log</span>: every change, with who, when, the old and new values and the reason. Filter by date, person, action or record.</li>
     </ul>
     <figure class="shot"><div class="frame"><img src="img/health.jpg" alt="System health"></div><figcaption>System health</figcaption></figure>
-    <div class="warn"><b>Personal data.</b> Applicant data is covered by the DPDP Act 2023. Give accounts only to people who need them, keep the site on HTTPS, use real virus scanning (ClamAV) before real documents are uploaded, and keep backups off the server.</div>
+    <div class="warn"><b>Personal data.</b> Applicant data is covered by the DPDP Act 2023. Give accounts only to people who need them, keep the site on HTTPS, use real virus scanning (ClamAV) before real documents are uploaded, and keep the emailed or downloaded backups (and the backup password) in safe places off the server.</div>
 </section>
 
 <!-- ======================= 11. ROLES ======================= -->
@@ -446,7 +468,7 @@
     <p>Each role can be limited to a campus, course and/or cycle. The exact permissions are under <span class="ui">People</span> → <span class="ui">Roles and permissions</span>.</p>
     <table>
         <tr><th style="width:24%">Role</th><th style="width:9%">2FA</th><th>Typical work</th></tr>
-        <tr><td>Super Admin</td><td>Yes</td><td>Everything: setup, users, roles, sources, settings, audit</td></tr>
+        <tr><td>Super Admin</td><td>Yes</td><td>Everything: setup, users (and login sheets), roles, sources, settings, backups and restore, audit</td></tr>
         <tr><td>IT Administrator</td><td>Yes</td><td>System health, technical settings, Maintenance (database updates), unlocking accounts. No applicant data</td></tr>
         <tr><td>Central Admission Administrator</td><td>Yes</td><td>Cycles, rounds, approving imports, files, stages, the schedule, panels, sending emails, locking and reopening marks, merit (all approvals)</td></tr>
         <tr><td>Branch Administrator</td><td>Yes</td><td>Their campus: users and teams, applications, files, panels and scheduling, viewing merit</td></tr>
