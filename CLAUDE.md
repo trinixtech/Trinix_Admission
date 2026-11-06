@@ -13,7 +13,7 @@ Interview-based admission (Main product, split from Trinix Admiso 0.8.0). Read `
   - Installation wizard and Maintenance page.
   - Dashboard: admission workflow per course and round (`WorkflowController`, live counts and next step); today's interviews for panel members.
 - The optional modules live in Trinix Admiso (repository `trinixtech/Trinix-Admiso`); do not add them here unless the user asks.
-- Releases: a version (workflow_dispatch input, e.g. `1.0.0`) builds the upload-ready ZIP and, with the `test-host` environment secrets, uploads it (`.github/workflows/release.yml`, `docs/DEPLOYMENT.md`).
+- Releases: a version (workflow_dispatch input, e.g. `1.0.0`) builds the upload-ready ZIP on the GitHub Release. The user uploads it by hand (cPanel File Manager, Extract) with the subdomain's document root at `public/`; FTP upload is optional and not used (`.github/workflows/release.yml`, `docs/DEPLOYMENT.md`).
 
 ## Commands
 

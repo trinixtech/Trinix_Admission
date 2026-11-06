@@ -21,32 +21,24 @@ About 60 MB of disk space for the code, plus documents and logs.
 
 ## 2. Folder layout
 
-Upload the app to a folder **outside** `public_html`, for example `/home/<user>/trinix-admission`. Then set the subdomain's **document root** to its `public/` folder: `/home/<user>/trinix-admission/public`.
+Upload the app to a folder **outside** `public_html`, for example `/home/<user>/trinix-admission`. Then set the subdomain's **document root** to its `public/` folder: `/home/<user>/trinix-admission/public` (cPanel → Domains → Manage next to the subdomain → Document Root).
 
-Only `public/` can then be reached from the web. `.env`, `storage/` (documents) and `vendor/` cannot.
+Only `public/` can then be reached from the web. `.env` (database and mail passwords), `storage/` (applicants' documents) and the program code cannot, whatever happens to any `.htaccess` file. **This is the chosen layout.**
 
-*If the panel cannot point the document root at `public/`:* upload the app into the subdomain's folder. Copy the block from **`.htaccess.root`** to the **top** of that folder's `.htaccess` (create it if there is none). **Keep the cPanel-generated blocks** (PHP version handler, php ini directives) below it. Every request is then served from `public/`, and dot-files are refused. A `404` on `/install` almost always means this step (or the document root) is missing.
+*Only if a panel cannot point the document root at `public/`:* upload the app into the subdomain's folder and copy the block from **`.htaccess.root`** to the **top** of that folder's `.htaccess`, keeping the cPanel-generated blocks below it. This works, but the private files are then protected only by that file's rules; prefer the document root above.
 
-## 3. Getting the code onto the host
+## 3. Getting the code onto the host (by hand)
 
-Each release is a ready-to-upload ZIP. It includes `vendor/` and the built screens, so nothing has to be installed on the server.
+Each release is a ready-to-upload ZIP on the repository's **Releases** page. It includes `vendor/` and the built screens, so nothing has to be installed on the server. It contains no `.env`, documents or database.
 
-**A. Automatic, from GitHub (recommended).** In the GitHub repository, open Settings → Environments, create **`test-host`**, and add these **secrets**:
+1. Download `trinix-admission-<version>.zip` from the release.
+2. cPanel → **File Manager** → open the app folder (`/home/<user>/trinix-admission`) → **Upload** the ZIP.
+3. Select the ZIP → **Extract** into the same folder. On an update, allow it to overwrite existing files.
+4. Delete the ZIP afterwards.
 
-| Secret | Example |
-| --- | --- |
-| `DEPLOY_PROTOCOL` | `ftps` (or `sftp`, or `ftp` only if nothing else is offered) |
-| `DEPLOY_HOST` | `ftp.example.org` |
-| `DEPLOY_PORT` | `21` (FTPS) or `22` (SFTP) |
-| `DEPLOY_USER` | the FTP/SFTP user |
-| `DEPLOY_PASSWORD` | its password |
-| `DEPLOY_PATH` | the app folder as the FTP user sees it, e.g. `/trinix-admission` |
+Never delete `.env` or the `storage/` folder: they hold the settings, the "installed" marker, logs and the applicants' documents. Extracting a new release over the folder leaves them as they are.
 
-Then every version tag (`v0.5.0`, `v0.6.0`, …) builds the ZIP, attaches it to a GitHub Release and uploads it. It can also be started by hand: Actions → Release → Run workflow.
-
-The upload replaces the code and deletes files a release no longer has. It **never touches** `.env`, `storage/` (documents, logs, the "installed" marker), database files or the root `.htaccess`.
-
-**B. By hand.** Download `trinix-admission-<version>.zip` from the GitHub Release. Upload it with the File Manager to the app folder, and use **Extract**. On an update, do not overwrite `.env` or `storage/`.
+*Optional:* the release workflow can upload over FTPS/SFTP instead, if the six `DEPLOY_*` values are added as repository secrets (Settings → Secrets and variables → Actions). Without them it only builds the ZIP.
 
 ## 4. First installation
 
@@ -92,7 +84,7 @@ No sample or demo data is shipped or loaded: the system starts empty apart from 
 
 ## 6. Updates
 
-1. A new version tag uploads the new code (or upload it by hand as in §3B).
+1. Upload and extract the new release ZIP as in §3.
 2. Sign in as **IT Administrator** (or Super Admin): **System → Maintenance** lists any pending database updates. Take a backup in cPanel first, then type `MIGRATE` and your password.
 3. If the screens look old, reload the page: built files have new names in each release.
 
