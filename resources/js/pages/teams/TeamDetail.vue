@@ -40,8 +40,8 @@ async function saveEdit() {
     try {
         await api.patch(`/teams/${props.uid}`, { ...edit.value, valid_to: edit.value.valid_to || null });
         editOpen.value = false;
-        msg.value = 'Saved.';
         await load();
+        msg.value = 'Saved.';
     } catch (e) {
         editErrors.value = fieldErrors(e);
         if (!Object.keys(editErrors.value).length) editErrors.value = { _: errorMessage(e) };
@@ -63,8 +63,8 @@ async function addMember() {
     try {
         await api.post(`/teams/${props.uid}/members`, { user_uid: pick.value.uid, member_role: memberRole.value });
         addOpen.value = false;
-        msg.value = 'Member added.';
         await load();
+        msg.value = 'Member added.';
     } catch (e) {
         addErr.value = errorMessage(e);
     }
@@ -77,8 +77,8 @@ async function remove(reason: string) {
     try {
         await api.post(`/team-members/${removing.value.id}/remove`, { reason });
         removing.value = null;
-        msg.value = 'Member removed.';
         await load();
+        msg.value = 'Member removed.';
     } catch (e) {
         removeErr.value = errorMessage(e);
     }

@@ -21,8 +21,8 @@ async function save(key: string) {
     try {
         const v = values.value[key];
         await api.patch(`/system/settings/${key}`, { value: v === '' ? null : v });
-        msg.value = `${titleCase(key)} saved.`;
         await load();
+        msg.value = `${titleCase(key)} saved.`;
     } catch (e) {
         err.value = errorMessage(e);
     }

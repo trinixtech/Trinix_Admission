@@ -36,8 +36,8 @@ async function run(fn: () => Promise<any>, done?: string) {
     msg.value = err.value = '';
     try {
         const r = await fn();
-        msg.value = r?.data?.message ?? done ?? '';
         await load();
+        msg.value = r?.data?.message ?? done ?? '';
         if (tab.value === 'results') await loadSummary();
     } catch (e) {
         err.value = errorMessage(e);
@@ -118,6 +118,7 @@ async function sendOn() {
 <template>
     <template v-if="p">
         <PageHeader :title="p.name" :subtitle="`${date(p.panel_date)} · ${p.stage.name} · ${p.round.name} · ${p.mode === 'online' ? 'Online' : [p.venue, p.location?.name, p.location?.city].filter(Boolean).join(', ')}`" back="/panels">
+            <a :href="`/api/v1/panels/${p.uid}/sheet`" class="btn-secondary">Print attendance sheet</a>
             <StatusBadge :status="p.status" />
         </PageHeader>
         <Alert v-if="warning" tone="warning">{{ warning }} Consider a different panel for this stage.</Alert>

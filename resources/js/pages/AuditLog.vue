@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import PageHeader from '@/components/PageHeader.vue';
 import Alert from '@/components/Alert.vue';
 import Modal from '@/components/Modal.vue';
@@ -12,15 +12,18 @@ import { useScopeOptions } from '@/lib/options';
 const opts = useScopeOptions();
 const rows = ref<any[]>([]);
 const page = reactive({ current: 1, last: 1, total: 0 });
-const f = reactive({ from: '', to: '', action: '', branch_uid: null as string | null });
+const f = reactive({ from: '', to: '', action: '', branch_uid: null as string | null, actor_uid: '', subject_type: '' });
+const people = ref<{ value: string; label: string }[]>([]);
+const types = ref<string[]>([]);
+const params = () => ({ from: f.from || undefined, to: f.to || undefined, action: f.action || undefined, branch_uid: f.branch_uid || undefined, actor_uid: f.actor_uid || undefined, subject_type: f.subject_type || undefined });
+const exportUrl = computed(() => `/api/v1/audit-logs/export?${new URLSearchParams(Object.entries(params()).filter(([, v]) => v) as [string, string][])}`);
 const err = ref('');
 const detail = ref<any>(null);
 
 async function load(p = 1) {
     err.value = '';
     try {
-        const params = { page: p, from: f.from || undefined, to: f.to || undefined, action: f.action || undefined, branch_uid: f.branch_uid || undefined };
-        const { data } = await api.get('/audit-logs', { params });
+        const { data } = await api.get('/audit-logs', { params: { page: p, ...params() } });
         rows.value = data.data;
         Object.assign(page, { current: data.current_page, last: data.last_page, total: data.total });
     } catch (e) {
@@ -35,6 +38,10 @@ watch(f, () => {
 onMounted(() => {
     load();
     opts.load();
+    api.get('/audit-logs/options').then((r) => {
+        people.value = r.data.data.people;
+        types.value = r.data.data.record_types;
+    }).catch(() => {});
 });
 
 async function show(id: number) {
@@ -50,7 +57,10 @@ function val(v: unknown): string {
 </script>
 
 <template>
-    <PageHeader title="Audit log" subtitle="Every change, sign-in and approval. Rows cannot be edited or deleted." />
+    <PageHeader title="Audit log" subtitle="Every change, sign-in and approval. Rows cannot be edited or deleted.">
+        <a v-if="page.total && page.total <= 50000" :href="exportUrl" class="btn-secondary">Export {{ page.total }} rows to Excel</a>
+        <span v-else-if="page.total > 50000" class="text-sm text-slate-600 dark:text-slate-400">Narrow the filters to export (50,000 rows at most).</span>
+    </PageHeader>
     <Alert v-if="err" tone="error">{{ err }}</Alert>
 
     <div class="card">
@@ -59,6 +69,8 @@ function val(v: unknown): string {
             <Field v-model="f.to" label="To" type="date" />
             <Field v-model="f.action" label="Action starts with" placeholder="e.g. round." />
             <Field v-model="f.branch_uid" label="Branch" type="select" :options="opts.branches.value" />
+            <Field v-model="f.actor_uid" label="Person" type="select" :options="[{ value: '', label: 'Anyone' }, ...people]" />
+            <Field v-model="f.subject_type" label="Kind of record" type="select" :options="[{ value: '', label: 'Any' }, ...types.map((t) => ({ value: t, label: t }))]" />
         </div>
         <div class="table-wrap">
             <table class="table">

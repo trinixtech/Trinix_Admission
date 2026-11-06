@@ -4,6 +4,7 @@ use App\Modules\Audit\Models\AuditLog;
 use App\Modules\System\Models\SystemSetting;
 use App\Support\Scope;
 use Illuminate\Support\Facades\Artisan;
+use OpenSpout\Reader\XLSX\Reader;
 
 it('lets a branch admin see only audit rows from their branch', function () {
     $w = world();
@@ -30,6 +31,34 @@ it('filters the audit log by action and date', function () {
 
     $this->getJson('/api/v1/audit-logs?action=branch.')->assertOk()->assertJsonCount(1, 'data');
     $this->getJson('/api/v1/audit-logs?action=branch.&from='.today()->addDay()->toDateString())->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('filters the audit log by person and kind of record, and exports it to Excel', function () {
+    $w = world();
+    $central = userWithRole('central_admin', attributes: ['name' => 'Central One']);
+    $this->actingAs($central)->patchJson("/api/v1/branches/{$w->a->uid}", ['phone' => '1'])->assertOk();
+    $this->patchJson("/api/v1/courses/{$w->mba->uid}", ['name' => 'MBA (IB) renamed'])->assertOk();
+
+    $opts = $this->getJson('/api/v1/audit-logs/options')->assertOk()->json('data');
+    expect(collect($opts['people'])->pluck('value'))->toContain($central->uid)->and($opts['record_types'])->toContain('Branch', 'Course');
+    $this->getJson("/api/v1/audit-logs?actor_uid={$central->uid}&subject_type=Course")->assertOk()->assertJsonCount(1, 'data');
+
+    $r = $this->get("/api/v1/audit-logs/export?actor_uid={$central->uid}&subject_type=Branch")->assertOk();
+    expect($r->headers->get('content-type'))->toContain('spreadsheetml');
+    $path = $r->baseResponse->getFile()->getPathname();
+    $reader = new Reader;
+    $reader->open($path);
+    $rows = [];
+    foreach ($reader->getSheetIterator() as $sheet) {
+        foreach ($sheet->getRowIterator() as $row) {
+            $rows[] = $row->toArray();
+        }
+    }
+    $reader->close();
+    expect($rows)->toHaveCount(2)->and($rows[1][3])->toBe('branch.updated')->and($rows[1][7])->toContain('phone');
+    expect(AuditLog::where('action', 'audit.exported')->first()->new_values['rows'])->toBe(1);
+
+    $this->actingAs(userWithRole('faculty'))->get('/api/v1/audit-logs/export')->assertForbidden();
 });
 
 it('adds a request id to responses and audit rows', function () {

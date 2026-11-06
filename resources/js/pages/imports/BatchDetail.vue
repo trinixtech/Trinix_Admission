@@ -154,8 +154,8 @@ function toggle(id: number) {
 async function exclude(excluded: boolean) {
     try {
         await api.post(`/import-batches/${props.uid}/exclusions`, { record_ids: [...selected.value], excluded });
-        msg.value = excluded ? 'Rows excluded.' : 'Rows included again.';
         await load();
+        msg.value = excluded ? 'Rows excluded.' : 'Rows included again.';
     } catch (e) {
         err.value = errorMessage(e);
     }

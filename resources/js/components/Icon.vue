@@ -26,6 +26,7 @@ const paths: Record<string, string[]> = {
     wallet: ['M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1V7Z', 'M4 7V6a2 2 0 0 1 2-2h10v3', 'M16 13h4'],
     arrowRight: ['M5 12h14', 'm13 6 6 6-6 6'],
     check: ['m5 12 5 5L20 7'],
+    report: ['M7 3h7l5 5v13H7z', 'M14 3v5h5', 'M10 13h6', 'M10 17h6'],
     alert: ['M12 9v4', 'M12 17h.01', 'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'],
 };
 </script>

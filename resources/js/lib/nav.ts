@@ -54,6 +54,7 @@ export const NAV: NavGroup[] = [
         icon: 'chat',
         hint: 'Stages and marks, panels, dates and slots, scheduling and marks',
         items: [
+            { to: '/selection/stage-map', label: 'Stage map', perm: ['stages.configure', 'panels.manage'] },
             { to: '/selection/stages', label: 'Stages and criteria', perm: ['stages.configure', 'panels.manage'] },
             { to: '/panels', label: 'Panels, slots and schedule', perm: ['panels.manage'] },
         ],
@@ -68,6 +69,7 @@ export const NAV: NavGroup[] = [
             { to: '/merit/lists', label: 'Merit lists', perm: ['merit.view'] },
         ],
     },
+    { key: 'reports', label: 'Reports', icon: 'report', to: '/reports', perm: ['panels.manage', 'evaluations.view', 'applicants.view', 'imports.view'], hint: 'Interview progress, marks, faculty workload, applicants; Excel exports' },
     {
         key: 'people',
         label: 'People',

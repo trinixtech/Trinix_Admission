@@ -40,8 +40,8 @@ async function save() {
                 return { branch_uid, course_uid, status: state.value[k] ? 'active' : 'inactive' };
             }),
         });
-        msg.value = 'Saved.';
         await load();
+        msg.value = 'Saved.';
     } catch (e) {
         err.value = errorMessage(e);
     }

@@ -80,9 +80,9 @@
         <li><b>3. Setup</b><span>Institution, campuses, locations, courses, cycles and rounds</span></li>
         <li><b>4. People</b><span>Users, importing faculty, roles and permissions, teams</span></li>
         <li><b>5. Applicants and imports</b><span>Sources, importing the shortlist, applicants' files (optional), applications</span></li>
-        <li><b>6. Interviews (GD/PI)</b><span>Stages and marks, the Excel schedule, panels, automatic assignment, emails, rescheduling, locking</span></li>
+        <li><b>6. Interviews (GD/PI)</b><span>The stage map, stages and marks, the Excel schedule, panels, automatic assignment, emails, rescheduling, locking</span></li>
         <li><b>7. Marking interviews (for panel members)</b><span>My interviews on a phone or tablet, submitting</span></li>
-        <li><b>8. Merit</b><span>Merit formula, running, approving and publishing merit lists, exports</span></li>
+        <li><b>8. Merit</b><span>Merit formula, running, approving and publishing merit lists; reports and exports</span></li>
         <li><b>9. System administration</b><span>Installation, updates, health, settings, audit log</span></li>
         <li><b>10. Roles at a glance</b><span>Who can do what</span></li>
         <li><b>11. Questions and troubleshooting</b><span>Common questions, terms used</span></li>
@@ -297,6 +297,24 @@
     <div class="kicker">Chapter 6 · Menu: Interviews (GD/PI)</div>
     <h1>Interviews (GD/PI)</h1>
 
+    <h2>Stage map</h2>
+    <p><span class="ui">Interviews (GD/PI)</span> → <span class="ui">Stage map</span> shows the stages of a course in order, for example <b>WAT → GD → PI → Merit</b>. Choose the course, cycle and round. Each stage box shows:</p>
+    <ul>
+        <li>its <b>components</b> (criteria) with their maximum marks, the <b>total</b>, and how the panel members' marks are combined;</li>
+        <li>for the round: how many candidates are <b>scheduled</b>, present, absent and locked;</li>
+        <li><b>where</b> it happens: each venue (or online) with its dates and panels, with the number of candidates and members. A warning appears if a later in-person stage has panels at a place where the earlier stage was not held.</li>
+    </ul>
+    <figure class="shot"><div class="frame"><img src="img/stage-map.jpg" alt="Stage map"></div><figcaption>Stage map: WAT (no components yet), GD and PI with their venues and panels</figcaption></figure>
+    <p>The admin can change the stages here:</p>
+    <ul>
+        <li><span class="ui">Add a stage</span>: a code (capitals, e.g. ESSAY), a name, and its components with maximum marks.</li>
+        <li><span class="ui">Edit</span>: rename the stage, change its code, and add, rename or remove components and change maximum marks.</li>
+        <li><b>↑ ↓</b> move a stage earlier or later. <span class="ui">Switch off</span> hides a stage this course does not use.</li>
+        <li><span class="ui">Delete</span> removes a stage and its components for good.</li>
+    </ul>
+    <div class="note"><b>What locks, and when.</b> Until marks are entered, everything can change. Once any marks are entered for a stage, its components and maximum marks are locked (component names can still be corrected), so no marks are ever lost. The <b>code</b> is fixed once the stage has panels or a merit formula uses it. A stage can be <b>deleted</b> only while it has no panels, candidates or marks and no merit formula uses it; otherwise switch it off. The box shows the reason when something is locked, and every change is in the audit log.</div>
+    <figure class="shot"><div class="frame"><img src="img/stage-edit.jpg" alt="Edit a stage"></div><figcaption>Editing GD after marks were entered: the code and maximum marks are locked, with the reasons</figcaption></figure>
+
     <h2>Stages and criteria (each cycle)</h2>
     <p><span class="ui">Stages and criteria</span> (choose the course and cycle) defines the selection stages, e.g. <b>WAT, GD, PI</b> for MBA and <b>WAT, PI</b> for IPM. For each stage the admin sets:</p>
     <ul>
@@ -416,6 +434,24 @@
         <li><span class="ui">Excel</span> exports the full breakdown for the committee. <span class="ui">Notice PDF</span> gives a notice-board list (number, name, category, total and ranks, with no contact details). Both are recorded.</li>
         <li><span class="ui">Check for changes</span> compares the list with today's data and re-calculates the stored data to confirm the result. If marks are reopened or a field is corrected after publishing, the list is marked <b>out of date</b>; run a new version, and <span class="ui">Compare</span> shows what changed.</li>
     </ul>
+
+    <h2>Reports and exports</h2>
+    <p><span class="ui">Reports</span> (in the menu) shows four reports for one course and round. <span class="ui">Export to Excel</span> saves the report shown, one sheet per table; every export is recorded in the audit log.</p>
+    <ul>
+        <li><b>Interview progress</b>: per stage and panel: scheduled, attendance not yet marked, present, absent, marks complete, locked, and not yet emailed.</li>
+        <li><b>Marks and results</b> (choose the stage): each candidate's stage result, how many members have submitted and whether it is locked; and every panel member's marks per component, their total, unusual marks and remarks.</li>
+        <li><b>Faculty workload</b>: per panel member: panels (and as chair), dates, candidates to mark, submitted, still to mark, conflicts declared. Those with most still to mark come first.</li>
+        <li><b>Imports and applicants</b>: applicants in the round by category, gender and first GD/PI centre preference, and the imports with who uploaded and approved them.</li>
+    </ul>
+    <figure class="shot phone"><div class="frame"><img src="img/reports.jpg" alt="Reports"></div><figcaption>Marks and results on a phone</figcaption></figure>
+    <p>Other exports:</p>
+    <ul>
+        <li><span class="ui">Applications</span> → <span class="ui">Export to Excel</span>: the applications in the current search and filters, with contact details.</li>
+        <li>A panel's page → <span class="ui">Print attendance sheet</span>: a PDF for the venue with each slot's candidates, Present/Absent boxes and a signature column.</li>
+        <li><span class="ui">Merit lists</span>: Excel with the full breakdown, or the notice-board PDF.</li>
+        <li><span class="ui">Audit log</span> → <span class="ui">Export to Excel</span> (Chapter 9).</li>
+    </ul>
+    <p>Reports cover a whole course, so they are for roles that work across all campuses of the course (for example the Central Admission Administrator). Exports contain personal data: keep the files safe and delete them when no longer needed.</p>
 </section>
 
 <!-- ======================= 12. SYSTEM ======================= -->
@@ -455,9 +491,10 @@
     <ul>
         <li><span class="ui">System health</span>: database, Redis, storage, the virus scanner, the scheduler (cron), the queues and the last backup. A warning here needs IT attention.</li>
         <li><span class="ui">Settings</span>: for example the session timeout, sign-in lock rules, invitation expiry, support email, deficiency reply days, and allowed document-link websites. Technical settings belong to the IT Administrator.</li>
-        <li><span class="ui">Audit log</span>: every change, with who, when, the old and new values and the reason. Filter by date, person, action or record.</li>
+        <li><span class="ui">Audit log</span>: every change, sign-in, approval, export and backup, with who, when, the old and new values and the reason. Filter by date, action, campus, <b>person</b> and <b>kind of record</b>, and <span class="ui">Export … rows to Excel</span> (up to 50,000 rows, with what changed). Rows can never be edited or deleted, and each export is itself recorded.</li>
     </ul>
     <figure class="shot"><div class="frame"><img src="img/health.jpg" alt="System health"></div><figcaption>System health</figcaption></figure>
+    <figure class="shot"><div class="frame"><img src="img/audit.jpg" alt="Audit log"></div><figcaption>Audit log with filters for person and kind of record, and the Excel export</figcaption></figure>
     <div class="warn"><b>Personal data.</b> Applicant data is covered by the DPDP Act 2023. Give accounts only to people who need them, keep the site on HTTPS, use real virus scanning (ClamAV) before real documents are uploaded, and keep the emailed or downloaded backups (and the backup password) in safe places off the server.</div>
 </section>
 

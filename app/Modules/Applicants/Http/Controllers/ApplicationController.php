@@ -13,11 +13,13 @@ use App\Modules\Imports\Models\ImportRecord;
 use App\Modules\Merit\Services\MeritService;
 use App\Modules\Organisation\Models\Course;
 use App\Modules\Selection\Services\PanelAccess;
+use App\Support\Spreadsheet;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ApplicationController extends Controller
@@ -48,6 +50,35 @@ class ApplicationController extends Controller
     public function index(Request $request): JsonResponse
     {
         $this->access()->authorizeAnywhere($this->actor(), 'applicants.view');
+
+        // simplePaginate avoids a full count over a million rows; the UI shows next/previous.
+        return response()->json($this->listQuery($request)->simplePaginate($this->perPage($request)));
+    }
+
+    /** The applications in the current filters as Excel (contact details included); recorded in the audit log. */
+    public function export(Request $request): BinaryFileResponse
+    {
+        $this->access()->authorizeAnywhere($this->actor(), 'applicants.view');
+        $query = $this->listQuery($request)->addSelect('applications.id', 'applicants.email', 'applicants.mobile', 'applicants.gender', 'applicants.city',
+            'applications.interview_centres', 'cycles.name as cycle_name')->join('admission_cycles as cycles', 'cycles.id', '=', 'applications.admission_cycle_id');
+        $total = (clone $query)->count();
+        if ($total > 50000) {
+            $this->fail('q', "$total applications match. Narrow the filters to 50,000 or fewer.");
+        }
+        $this->audit()->record('applications.exported', null, null, ['rows' => $total, 'filters' => array_filter($request->only(['q', 'course_uid', 'cycle_uid', 'round_uid', 'category', 'status']))]);
+        $rows = (function () use ($query) {
+            foreach ($query->cursor() as $a) {
+                yield [$a->portal_application_no, $a->full_name, $a->course_code, $a->cycle_name, $a->category, (bool) $a->pwbd, $a->gender, $a->email, $a->mobile, $a->city,
+                    $a->exam, $a->entrance_application_no, $a->percentile === null ? null : (float) $a->percentile, implode(', ', array_values($a->interview_centres ?? [])), $a->status];
+            }
+        })();
+
+        return Spreadsheet::download('applications-'.now(config('app.display_timezone'))->format('Ymd-His'), ['Application number', 'Name', 'Course', 'Cycle', 'Category', 'PwBD', 'Gender', 'Email',
+            'Mobile', 'City', 'Exam', 'Exam application number', 'Percentile', 'GD/PI centre preferences', 'Status'], $rows);
+    }
+
+    private function listQuery(Request $request): \Illuminate\Database\Eloquent\Builder
+    {
         $q = trim((string) $request->query('q', ''));
 
         $query = Application::query()
@@ -64,10 +95,8 @@ class ApplicationController extends Controller
             ->when($request->query('category'), fn ($w, $c) => $w->where('applications.category', $c))
             ->when($request->query('status'), fn ($w, $s) => $w->where('applications.status', $s))
             ->orderBy('applications.id', 'desc');
-        $this->applications->apply($query, $this->actor(), 'applicants.view');
 
-        // simplePaginate avoids a full count over a million rows; the UI shows next/previous.
-        return response()->json($query->simplePaginate($this->perPage($request)));
+        return $this->applications->apply($query, $this->actor(), 'applicants.view');
     }
 
     /**

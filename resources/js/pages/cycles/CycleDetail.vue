@@ -73,8 +73,8 @@ async function saveOffering() {
             await api.post(`/admission-cycles/${props.uid}/offerings`, { branch_uid, course_uid, sanctioned_intake: offerForm.value.sanctioned_intake, status: offerForm.value.status });
         }
         offerOpen.value = false;
-        msg.value = 'Offering saved.';
         await load();
+        msg.value = 'Offering saved.';
     } catch (e) {
         offerErrors.value = fieldErrors(e);
         if (!Object.keys(offerErrors.value).length) offerErrors.value = { _: errorMessage(e) };
@@ -102,8 +102,8 @@ async function openCycle() {
     msg.value = err.value = '';
     try {
         await api.post(`/admission-cycles/${props.uid}/open`);
-        msg.value = 'Cycle opened.';
         await load();
+        msg.value = 'Cycle opened.';
     } catch (e) {
         err.value = errorMessage(e);
     }
@@ -113,8 +113,8 @@ async function closeCycle(reason: string) {
     try {
         await api.post(`/admission-cycles/${props.uid}/close`, { reason, confirm: true });
         closeOpen.value = false;
-        msg.value = 'Cycle closed. It is now read-only.';
         await load();
+        msg.value = 'Cycle closed. It is now read-only.';
     } catch (e) {
         closeErr.value = errorMessage(e);
     }

@@ -63,8 +63,8 @@ async function revoke(id: number) {
     if (!window.confirm('Revoke this token? The portal can no longer push with it.')) return;
     try {
         await api.post(`/source-tokens/${id}/revoke`);
-        msg.value = 'Token revoked.';
         await load();
+        msg.value = 'Token revoked.';
     } catch (e) {
         err.value = errorMessage(e);
     }

@@ -648,3 +648,94 @@ it('leaves switched-off stages out of new panels and the schedule template', fun
     $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$gd", ['status' => 'active'])->assertOk();
     panel($this, $gd, [$this->f1]);
 });
+
+// ----- Stage map: add, rename, reorder, delete -----------------------------------------------
+
+it('deletes an unused stage with its components, but never one with panels or in a merit formula', function () {
+    [$gd, $pi] = stages($this);
+    $q = ['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid];
+    $extra = $this->actingAs($this->approver)->postJson('/api/v1/selection-stages', $q + ['code' => 'ESSAY', 'name' => 'Essay'])->assertCreated()->json('data.uid');
+    $this->patchJson("/api/v1/selection-stages/$extra", ['criteria' => [['name' => 'Ideas', 'max_marks' => 5]]])->assertOk();
+    $this->deleteJson("/api/v1/selection-stages/$extra")->assertOk();
+    expect(SelectionStage::where('uid', $extra)->exists())->toBeFalse()
+        ->and(AuditLog::where('action', 'stage.deleted')->first()->old_values['code'])->toBe('ESSAY');
+
+    panel($this, $gd, [$this->f1]);
+    $this->actingAs($this->approver)->deleteJson("/api/v1/selection-stages/$gd")->assertUnprocessable()->assertJsonValidationErrors('stage');
+    $this->patchJson("/api/v1/selection-stages/$gd", ['code' => 'GDX'])->assertUnprocessable()->assertJsonValidationErrors('code');
+    $this->patchJson("/api/v1/selection-stages/$gd", ['name' => 'Group Discussion (renamed)'])->assertOk();
+
+    $this->actingAs($this->staff)->deleteJson("/api/v1/selection-stages/$pi")->assertForbidden();
+    $this->actingAs($this->approver)->patchJson("/api/v1/selection-stages/$pi", ['code' => 'PINT'])->assertOk();
+    expect(SelectionStage::where('uid', $pi)->value('code'))->toBe('PINT');
+});
+
+it('reorders stages and shows the stage map with components, counts and venues', function () {
+    [$gd, $pi] = stages($this);
+    $q = ['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid];
+    $all = SelectionStage::where(['course_id' => $this->w->mba->id, 'admission_cycle_id' => $this->w->cycle->id])->orderBy('sort_order')->pluck('uid')->all();
+    $order = array_values(array_merge([$pi], array_diff($all, [$pi])));
+    $this->actingAs($this->approver)->postJson('/api/v1/selection-stages/reorder', $q + ['stage_uids' => $order])->assertOk();
+    expect(SelectionStage::where('uid', $pi)->value('sort_order'))->toBe(1);
+    $this->postJson('/api/v1/selection-stages/reorder', $q + ['stage_uids' => [$pi]])->assertUnprocessable();
+
+    $p = panel($this, $gd, [$this->f1], capacity: 3);
+    $this->actingAs($this->staff)->postJson("/api/v1/interview-slots/{$p['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])->assertCreated();
+    $map = $this->getJson('/api/v1/stage-map?'.http_build_query($q + ['round_uid' => $this->round1->uid]))->assertOk()->json('data');
+    $g = collect($map['stages'])->firstWhere('code', 'GD');
+    expect($map['stages'][0]['code'])->toBe('PI')
+        ->and($g['total_max'])->toEqual(20)
+        ->and($g['counts']['scheduled'])->toBe(1)
+        ->and($g['venues'][0]['location'])->toBe('Delhi campus')
+        ->and($g['venues'][0]['panels'][0]['candidates'])->toBe(1)
+        ->and($g['usage']['delete_blocked'])->toContain('panel')
+        ->and($map['can_configure'])->toBeFalse();
+    $this->actingAs($this->f1)->getJson('/api/v1/stage-map?'.http_build_query($q))->assertForbidden();
+});
+
+// ----- Reports and exports ----------------------------------------------------------------
+
+it('reports interview progress, marks, workload and applicants, on screen and as Excel', function () {
+    [$gd] = stages($this);
+    $p = panel($this, $gd, [$this->f1, $this->f2], capacity: 3);
+    $c = presentCandidate($this, $p, app_no(1));
+    mark($this, $this->f1, $c, [7, 8])->assertOk();
+    $q = ['course_uid' => $this->w->mba->uid, 'cycle_uid' => $this->w->cycle->uid, 'round_uid' => $this->round1->uid];
+
+    $progress = $this->actingAs($this->approver)->getJson('/api/v1/reports/progress?'.http_build_query($q))->assertOk()->json('data.tables.0.rows');
+    expect($progress[0][0])->toBe('GD')->and($progress[0][4])->toBe(1)->and($progress[0][6])->toBe(1);
+
+    $marks = $this->getJson('/api/v1/reports/marks?'.http_build_query($q + ['stage_uid' => $gd]))->assertOk()->json('data.tables');
+    expect($marks[0]['rows'][0][5])->toBe('1 of 2')
+        ->and($marks[1]['rows'][0][5])->toBe('Faculty One')
+        ->and($marks[1]['rows'][0][8])->toEqual(15);
+
+    $work = collect($this->getJson('/api/v1/reports/workload?'.http_build_query($q))->assertOk()->json('data.tables.0.rows'))->keyBy(0);
+    expect($work['Faculty One'][7])->toBe(1)->and($work['Faculty Two'][8])->toBe(1);
+
+    $apps = $this->getJson('/api/v1/reports/applicants?'.http_build_query($q))->assertOk()->json('data.tables');
+    expect($apps[0]['rows'][0][0])->toBe(6);
+
+    $x = $this->get('/api/v1/reports/marks?'.http_build_query($q + ['stage_uid' => $gd, 'format' => 'xlsx']))->assertOk();
+    expect($x->headers->get('content-type'))->toContain('spreadsheetml')
+        ->and(AuditLog::where('action', 'report.exported')->first()->new_values['report'])->toBe('marks');
+
+    $this->actingAs($this->f1)->getJson('/api/v1/reports/marks?'.http_build_query($q))->assertForbidden();
+    $this->actingAs($this->approver)->getJson('/api/v1/reports/nope?'.http_build_query($q))->assertNotFound();
+});
+
+it('exports the applications list and prints a panel attendance sheet', function () {
+    [$gd] = stages($this);
+    $p = panel($this, $gd, [$this->f1], capacity: 3);
+    $this->actingAs($this->staff)->postJson("/api/v1/interview-slots/{$p['slots'][0]['uid']}/candidates", ['application_uid' => app_no(1)->uid])->assertCreated();
+
+    $x = $this->actingAs($this->approver)->get('/api/v1/applications/export?course_uid='.$this->w->mba->uid)->assertOk();
+    expect($x->headers->get('content-type'))->toContain('spreadsheetml')
+        ->and(AuditLog::where('action', 'applications.exported')->first()->new_values['rows'])->toBe(6);
+
+    $panelUid = InterviewPanel::first()->uid;
+    $pdf = $this->actingAs($this->f1)->get("/api/v1/panels/$panelUid/sheet")->assertOk();
+    expect($pdf->headers->get('content-type'))->toBe('application/pdf')->and(substr($pdf->getContent(), 0, 4))->toBe('%PDF')
+        ->and(AuditLog::where('action', 'panel.sheet_printed')->exists())->toBeTrue();
+    $this->actingAs($this->f3)->get("/api/v1/panels/$panelUid/sheet")->assertForbidden();
+});

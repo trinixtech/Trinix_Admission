@@ -29,8 +29,10 @@ use App\Modules\Organisation\Http\Controllers\LocationController;
 use App\Modules\Selection\Http\Controllers\AutoAllocationController;
 use App\Modules\Selection\Http\Controllers\EvaluationController;
 use App\Modules\Selection\Http\Controllers\PanelController;
+use App\Modules\Selection\Http\Controllers\ReportController;
 use App\Modules\Selection\Http\Controllers\ScheduleImportController;
 use App\Modules\Selection\Http\Controllers\StageController;
+use App\Modules\Selection\Http\Controllers\StageMapController;
 use App\Modules\System\Http\Controllers\BackupController;
 use App\Modules\System\Http\Controllers\HealthController;
 use App\Modules\System\Http\Controllers\MaintenanceController;
@@ -112,6 +114,8 @@ Route::prefix('v1')->group(function () {
 
         // Audit
         Route::get('audit-logs', [AuditLogController::class, 'index']);
+        Route::get('audit-logs/options', [AuditLogController::class, 'options']);
+        Route::get('audit-logs/export', [AuditLogController::class, 'export']);
         Route::get('audit-logs/{id}', [AuditLogController::class, 'show'])->whereNumber('id');
 
         // Imports
@@ -140,6 +144,7 @@ Route::prefix('v1')->group(function () {
 
         // Applicants
         Route::get('applications', [ApplicationController::class, 'index']);
+        Route::get('applications/export', [ApplicationController::class, 'export']);
         Route::get('applications/{application}', [ApplicationController::class, 'show']);
         Route::post('applications/{application}/corrections', [ApplicationController::class, 'correct']);
 
@@ -159,6 +164,10 @@ Route::prefix('v1')->group(function () {
         Route::post('selection-stages/suggested', [StageController::class, 'suggest']);
         Route::post('selection-stages/copy', [StageController::class, 'copy']);
         Route::patch('selection-stages/{stage}', [StageController::class, 'update']);
+        Route::delete('selection-stages/{stage}', [StageController::class, 'destroy']);
+        Route::post('selection-stages/reorder', [StageController::class, 'reorder']);
+        Route::get('stage-map', [StageMapController::class, 'show']);
+        Route::get('reports/{kind}', [ReportController::class, 'show'])->whereIn('kind', ReportController::KINDS);
         Route::get('panels/schedule-template', [ScheduleImportController::class, 'template']);
         Route::post('panels/schedule-import', [ScheduleImportController::class, 'preview']);
         Route::post('panels/schedule-import/{token}/confirm', [ScheduleImportController::class, 'confirm'])->where('token', '[0-9A-Za-z]{26}');
@@ -176,6 +185,7 @@ Route::prefix('v1')->group(function () {
         Route::post('panels/auto-assign-faculty/{token}/confirm', [AutoAllocationController::class, 'confirmFaculty']);
         Route::post('panels/{panel}/bulk-schedule', [PanelController::class, 'bulkSchedule']);
         Route::get('panels/{panel}/summary', [PanelController::class, 'summary']);
+        Route::get('panels/{panel}/sheet', [PanelController::class, 'sheet']);
         Route::post('interview-slots/{slot}/candidates', [PanelController::class, 'schedule']);
         Route::post('interview-candidates/{candidate}/reschedule', [PanelController::class, 'reschedule']);
         Route::post('interview-candidates/{candidate}/cancel', [PanelController::class, 'cancel']);

@@ -48,8 +48,8 @@ async function saveDates() {
         await api.put(`/rounds/${props.uid}/offerings`, {
             offerings: included.map((o) => ({ offering_uid: o.uid, starts_on: rows.value[o.uid].starts_on, ends_on: rows.value[o.uid].ends_on })),
         });
-        msg.value = 'Offerings and dates saved.';
         await load();
+        msg.value = 'Offerings and dates saved.';
     } catch (e) {
         const fe = fieldErrors(e);
         for (const [k, v] of Object.entries(fe)) {
@@ -64,8 +64,8 @@ async function activate() {
     msg.value = err.value = '';
     try {
         await api.post(`/rounds/${props.uid}/activate`);
-        msg.value = 'Round activated.';
         await load();
+        msg.value = 'Round activated.';
     } catch (e) {
         err.value = errorMessage(e);
     }

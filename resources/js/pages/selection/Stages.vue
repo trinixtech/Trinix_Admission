@@ -48,8 +48,8 @@ async function run(fn: () => Promise<any>, done: string) {
     msg.value = err.value = '';
     try {
         await fn();
+        await load(); // reload first: the message means the screen is ready, so nothing typed is lost
         msg.value = done;
-        await load();
     } catch (e) {
         err.value = errorMessage(e);
     }

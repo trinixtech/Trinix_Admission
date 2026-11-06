@@ -575,6 +575,28 @@ try {
     await expectText(page, 'Database');
     await shot(page, '31-backups');
 
+    step('Stage map: the Super Admin adds a stage with components, sees the locks on GD, and deletes the new stage; reports open and export');
+    await page.goto(`${BASE}/selection/stage-map`);
+    await pickCourse(page);
+    await expectText(page, 'Group Discussion');
+    await page.getByRole('button', { name: 'Add a stage' }).click();
+    const stageDialog = page.getByRole('dialog');
+    await stageDialog.getByLabel(label('Code')).fill('ESSAY');
+    await stageDialog.getByLabel(label('Name')).fill('Essay writing');
+    await stageDialog.getByLabel(label('Component 1')).fill('Ideas');
+    await stageDialog.getByRole('button', { name: 'Add stage' }).click();
+    await expectText(page, 'ESSAY added.');
+    await shot(page, '32-stage-map');
+    await page.getByRole('article', { name: /^ESSAY/ }).getByRole('button', { name: 'Delete' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+    await expectText(page, 'ESSAY deleted.');
+    if (await page.getByRole('article', { name: /^GD/ }).getByRole('button', { name: 'Delete' }).isEnabled()) throw new Error('GD with marks could be deleted');
+    await page.goto(`${BASE}/reports`);
+    await pickCourse(page);
+    await page.getByRole('tab', { name: 'Marks and results' }).click();
+    await expectText(page, 'GD marks by member');
+    await shot(page, '33-reports');
+
     step('Desktop layout');
     const desk = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2, storageState: await ctx.storageState() });
     const dp = await desk.newPage();

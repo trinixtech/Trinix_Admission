@@ -33,8 +33,8 @@ async function act(key: string, fn: () => Promise<any>) {
     busy.value = key;
     try {
         const r = await fn();
-        msg.value = r?.data?.message ?? 'Done.';
         await load();
+        msg.value = r?.data?.message ?? 'Done.';
     } catch (e) {
         err.value = errorMessage(e);
     } finally {

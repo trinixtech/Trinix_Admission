@@ -29,7 +29,8 @@ class StageController extends Controller
         }
 
         return response()->json(['data' => SelectionStage::with(['criteria' => fn ($q) => $q->where('status', 'active')->orderBy('sort_order')])
-            ->where(['course_id' => $course->id, 'admission_cycle_id' => $cycle->id])->orderBy('sort_order')->get()]);
+            ->where(['course_id' => $course->id, 'admission_cycle_id' => $cycle->id])->orderBy('sort_order')->orderBy('id')->get()
+            ->map(fn (SelectionStage $st) => $st->toArray() + ['usage' => self::usage($st)])]);
     }
 
     public function suggest(Request $request): JsonResponse
@@ -78,6 +79,7 @@ class StageController extends Controller
         $scope = new Scope(null, $stage->course_id, $stage->admission_cycle_id);
         $this->access()->authorize($this->actor(), 'stages.configure', $scope);
         $data = $request->validate([
+            'code' => ['sometimes', 'string', 'max:16', 'regex:/^[A-Z][A-Z0-9_]*$/', Rule::unique('selection_stages')->where('course_id', $stage->course_id)->where('admission_cycle_id', $stage->admission_cycle_id)->ignore($stage->id)],
             'name' => ['sometimes', 'string', 'max:255'],
             'sort_order' => ['sometimes', 'integer', 'min:1', 'max:20'],
             'remark_rule' => ['sometimes', 'array'],
@@ -97,6 +99,9 @@ class StageController extends Controller
             'criteria.*.name' => ['required', 'string', 'max:120'],
             'criteria.*.max_marks' => ['required', 'numeric', 'min:0.5', 'max:1000', 'regex:/^\d+(\.\d{1,2})?$/'],
         ]);
+        if (isset($data['code']) && $data['code'] !== $stage->code && ($why = self::usage($stage)['code_locked'])) {
+            $this->fail('code', "The code can no longer change: $why. The name can.");
+        }
         if (isset($data['result_formula'])) {
             $data['result_formula'] = trim($data['result_formula']) === '' ? 'AVG' : preg_replace('/\s+/', ' ', trim($data['result_formula']));
             if ($error = StageFormula::check($data['result_formula'])) {
@@ -144,6 +149,73 @@ class StageController extends Controller
         });
 
         return response()->json(['data' => $stage->fresh(['criteria' => fn ($q) => $q->where('status', 'active')->orderBy('sort_order')])]);
+    }
+
+    /** Deletes a stage that was never used: no panels, candidates or marks, and no merit formula refers to it. */
+    public function destroy(SelectionStage $stage): JsonResponse
+    {
+        $scope = new Scope(null, $stage->course_id, $stage->admission_cycle_id);
+        $this->access()->authorize($this->actor(), 'stages.configure', $scope);
+        if ($why = self::usage($stage)['delete_blocked']) {
+            $this->fail('stage', "$stage->code cannot be deleted: $why. Switch it off instead.");
+        }
+        DB::transaction(function () use ($stage, $scope) {
+            $this->audit()->record('stage.deleted', $stage, ['code' => $stage->code, 'name' => $stage->name,
+                'criteria' => $stage->criteria()->get()->map->only(['name', 'max_marks'])->values()->all()], null, null, $scope);
+            $stage->criteria()->delete();
+            $stage->delete();
+        });
+
+        return response()->json(['message' => "Stage $stage->code deleted."]);
+    }
+
+    /** Puts the stages of a course and cycle in the given order (allowed at any time; names and order are not marks). */
+    public function reorder(Request $request): JsonResponse
+    {
+        [$course, $cycle] = $this->courseCycle($request);
+        $scope = new Scope(null, $course->id, $cycle->id);
+        $this->access()->authorize($this->actor(), 'stages.configure', $scope);
+        $data = $request->validate(['stage_uids' => ['required', 'array', 'min:1', 'max:20'], 'stage_uids.*' => ['string']]);
+        $stages = SelectionStage::where(['course_id' => $course->id, 'admission_cycle_id' => $cycle->id])->get()->keyBy('uid');
+        if (count($data['stage_uids']) !== $stages->count() || array_diff($data['stage_uids'], $stages->keys()->all())) {
+            $this->fail('stage_uids', 'List every stage of this course and cycle exactly once.');
+        }
+        DB::transaction(function () use ($data, $stages, $scope) {
+            $old = $stages->sortBy('sort_order')->pluck('code')->values()->all();
+            foreach ($data['stage_uids'] as $i => $uid) {
+                $stages[$uid]->forceFill(['sort_order' => $i + 1])->save();
+            }
+            $this->audit()->record('stage.reordered', null, ['order' => $old], ['order' => array_map(fn ($u) => $stages[$u]->code, $data['stage_uids'])], null, $scope);
+        });
+
+        return $this->index($request);
+    }
+
+    /**
+     * What a stage is already used for, and so what may still change.
+     *
+     * @return array{panels: int, candidates: int, has_marks: bool, in_formula: bool, code_locked: ?string, delete_blocked: ?string, components_locked: bool}
+     */
+    public static function usage(SelectionStage $stage): array
+    {
+        $panels = DB::table('interview_panels')->where('selection_stage_id', $stage->id)->count();
+        $candidates = DB::table('interview_candidates')->where('selection_stage_id', $stage->id)->count();
+        $hasMarks = DB::table('interview_evaluation_scores')->join('evaluation_criteria', 'evaluation_criteria.id', '=', 'interview_evaluation_scores.evaluation_criterion_id')
+            ->where('evaluation_criteria.selection_stage_id', $stage->id)->exists();
+        $inFormula = DB::table('merit_components')->join('merit_formulas', 'merit_formulas.id', '=', 'merit_components.merit_formula_id')
+            ->where('merit_formulas.course_id', $stage->course_id)->where('merit_formulas.admission_cycle_id', $stage->admission_cycle_id)
+            ->where('merit_components.source', 'stage')->where('merit_components.source_ref', $stage->code)->exists();
+        $reasons = array_filter([
+            $panels ? "it has $panels ".($panels === 1 ? 'panel' : 'panels') : null,
+            $candidates && ! $panels ? 'candidates were scheduled for it' : null,
+            $hasMarks ? 'marks were entered' : null,
+            $inFormula ? 'a merit formula uses it' : null,
+        ]);
+        $codeReasons = array_filter([$panels ? 'it has panels' : null, $inFormula ? 'a merit formula uses it' : null]);
+
+        return ['panels' => $panels, 'candidates' => $candidates, 'has_marks' => $hasMarks, 'in_formula' => $inFormula,
+            'code_locked' => $codeReasons ? implode(' and ', $codeReasons) : null,
+            'delete_blocked' => $reasons ? implode(', ', $reasons) : null, 'components_locked' => $hasMarks];
     }
 
     /**

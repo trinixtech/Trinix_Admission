@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import PageHeader from '@/components/PageHeader.vue';
 import Alert from '@/components/Alert.vue';
 import Field from '@/components/Field.vue';
@@ -11,6 +11,7 @@ const rows = ref<any[]>([]);
 const page = ref(1);
 const hasMore = ref(false);
 const f = reactive({ q: '', course_uid: null as string | null, cycle_uid: null as string | null, category: '' });
+const exportUrl = computed(() => `/api/v1/applications/export?${new URLSearchParams(Object.entries({ q: f.q, course_uid: f.course_uid ?? '', cycle_uid: f.cycle_uid ?? '', category: f.category }).filter(([, v]) => v))}`);
 const err = ref('');
 const loading = ref(false);
 
@@ -42,7 +43,9 @@ onMounted(() => {
 </script>
 
 <template>
-    <PageHeader title="Applications" subtitle="Search by portal number, CAT/IPMAT number, mobile, email or the start of a name." />
+    <PageHeader title="Applications" subtitle="Search by portal number, CAT/IPMAT number, mobile, email or the start of a name.">
+        <a :href="exportUrl" class="btn-secondary">Export to Excel</a>
+    </PageHeader>
     <Alert v-if="err" tone="error">{{ err }}</Alert>
     <div class="card">
         <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

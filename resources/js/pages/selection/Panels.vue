@@ -71,8 +71,8 @@ async function run(fn: () => Promise<any>) {
     msg.value = err.value = '';
     try {
         const r = await fn();
-        msg.value = r?.data?.message ?? '';
         await load();
+        msg.value = r?.data?.message ?? '';
         return r;
     } catch (e) {
         err.value = errorMessage(e);

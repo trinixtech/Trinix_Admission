@@ -44,6 +44,9 @@ const routes: RouteRecordRaw[] = [
     { path: '/applications/:uid', component: () => import('@/pages/applicants/ApplicationDetail.vue'), props: true, meta: { permission: ['applicants.view', 'evaluations.submit'], title: 'Application' } },
 
 
+    { path: '/selection/stage-map', component: () => import('@/pages/selection/StageMap.vue'), meta: { permission: ['stages.configure', 'panels.manage'], title: 'Stage map' } },
+
+
     { path: '/selection/stages', component: () => import('@/pages/selection/Stages.vue'), meta: { permission: ['stages.configure', 'panels.manage'], title: 'Stages and criteria' } },
     { path: '/panels', component: () => import('@/pages/selection/Panels.vue'), meta: { permission: 'panels.manage', title: 'Interview panels' } },
     { path: '/panels/:uid', component: () => import('@/pages/selection/PanelDetail.vue'), props: true, meta: { permission: ['panels.manage', 'evaluations.view'], title: 'Panel' } },
@@ -51,6 +54,8 @@ const routes: RouteRecordRaw[] = [
     { path: '/documents/types', component: () => import('@/pages/documents/DocumentTypes.vue'), meta: { permission: ['documents.manage', 'documents.view'], title: 'Document types' } },
     { path: '/merit/formula', component: () => import('@/pages/merit/MeritFormula.vue'), meta: { permission: ['merit.configure', 'merit.approve', 'merit.view'], title: 'Merit formula' } },
     { path: '/merit/lists', component: () => import('@/pages/merit/MeritLists.vue'), meta: { permission: 'merit.view', title: 'Merit lists' } },
+
+    { path: '/reports', component: () => import('@/pages/Reports.vue'), meta: { permission: ['panels.manage', 'evaluations.view', 'applicants.view', 'imports.view'], title: 'Reports' } },
 
     { path: '/audit', component: () => import('@/pages/AuditLog.vue'), meta: { permission: 'audit.view', title: 'Audit log' } },
     { path: '/system/health', component: () => import('@/pages/system/Health.vue'), meta: { permission: 'system.health', title: 'System health' } },

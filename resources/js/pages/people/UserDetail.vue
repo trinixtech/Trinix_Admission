@@ -36,8 +36,8 @@ async function act(fn: () => Promise<unknown>, done: string) {
     msg.value = err.value = '';
     try {
         await fn();
-        msg.value = done;
         await load();
+        msg.value = done;
     } catch (e) {
         err.value = errorMessage(e);
     }
@@ -56,8 +56,8 @@ async function saveEdit() {
     try {
         await api.patch(`/users/${props.uid}`, { ...edit.value, phone: edit.value.phone || null });
         editOpen.value = false;
-        msg.value = 'Saved.';
         await load();
+        msg.value = 'Saved.';
     } catch (e) {
         editErrors.value = fieldErrors(e);
         if (!Object.keys(editErrors.value).length) editErrors.value = { _: errorMessage(e) };
@@ -94,8 +94,8 @@ async function saveAdd() {
     try {
         await api.post(`/users/${props.uid}/assignments`, { ...assignment.value, valid_from: assignment.value.valid_from || null, valid_to: assignment.value.valid_to || null });
         addOpen.value = false;
-        msg.value = 'Role added.';
         await load();
+        msg.value = 'Role added.';
     } catch (e) {
         addErrors.value = fieldErrors(e);
         if (!Object.keys(addErrors.value).length) addErrors.value = { _: errorMessage(e) };

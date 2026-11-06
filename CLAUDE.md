@@ -13,6 +13,7 @@ Interview-based admission (Main product, split from Trinix Admiso 0.8.0). Read `
   - Installation wizard and Maintenance page.
   - Dashboard: admission workflow per course and round (`WorkflowController`, live counts and next step); today's interviews for panel members.
 - **1.1.0:** System → Backups (`BackupService`: PHP SQL dump, AES-256 ZIP with the admin's backup password, daily schedule at a set IST time with email, weekly full backup with documents, restore with a safety backup); printable login sheet for panel and committee members (`LoginSheetController`, temporary password, change forced at first sign-in); cleaner marks entry.
+- **1.2.0:** Stage map (`StageMapController`: stages in order with components, counts and venues; add, rename, reorder, delete; components locked once marks exist, code fixed once panels or a merit formula use it, delete only when unused); Reports (`ReportController`: interview progress, marks and results, faculty workload, imports and applicants; Excel); exports (applications, audit log, panel attendance PDF); audit log filters by person and record type.
 - The optional modules live in Trinix Admiso (repository `trinixtech/Trinix-Admiso`); do not add them here unless the user asks.
 - Releases: a version (workflow_dispatch input, e.g. `1.0.0`) builds the upload-ready ZIP on the GitHub Release. The user uploads it by hand (cPanel File Manager, Extract) with the subdomain's document root at `public/`; FTP upload is optional and not used (`.github/workflows/release.yml`, `docs/DEPLOYMENT.md`).
 
